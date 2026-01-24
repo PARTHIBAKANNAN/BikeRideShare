@@ -19,10 +19,10 @@ class Config:
     JWT_ACCESS_TOKEN_EXPIRES = 86400  # 24 hours in seconds
     
     # Azure OpenAI Settings (Optional)
-    AZURE_OPENAI_API_KEY = os.getenv('AZURE_OPENAI_API_KEY', "1GuSDAuf6Y3MzjAyyKqwJFF9EU7c4A1xfy3bSxAEelLnWepfC5fUJQQJ99BFACHYHv6XJ3w3AAABACOGPmzD")
-    AZURE_OPENAI_ENDPOINT = os.getenv('AZURE_OPENAI_ENDPOINT', "https://openoi3319.openai.azure.com/")
-    AZURE_OPENAI_DEPLOYMENT_NAME = os.getenv('AZURE_OPENAI_DEPLOYMENT_NAME', 'gpt-4o')
-    AZURE_OPENAI_API_VERSION = os.getenv('AZURE_OPENAI_API_VERSION', '2024-02-15-preview')
+    AZURE_OPENAI_API_KEY = os.getenv('AZURE_OPENAI_API_KEY')
+    AZURE_OPENAI_ENDPOINT = os.getenv('AZURE_OPENAI_ENDPOINT')
+    AZURE_OPENAI_DEPLOYMENT_NAME = os.getenv('AZURE_OPENAI_DEPLOYMENT_NAME')
+    AZURE_OPENAI_API_VERSION = os.getenv('AZURE_OPENAI_API_VERSION')
     
     # App Settings
     DEBUG = os.getenv('DEBUG', 'True').lower() == 'true'

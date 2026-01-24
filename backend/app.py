@@ -1,0 +1,153 @@
+#!/usr/bin/env python3
+"""
+Smart Ride Matcher - Flask Backend Application
+"""
+
+import os
+from flask import Flask, jsonify
+from flask_sqlalchemy import SQLAlchemy
+from flask_jwt_extended import JWTManager
+from flask_restx import Api
+from flask_cors import CORS
+from config.settings import Config
+from models.models import db
+
+def create_app(config_name='development'):
+    """Create and configure Flask application"""
+    
+    app = Flask(__name__)
+    
+    # Load configuration
+    config = {
+        'development': Config,
+        'production': Config,
+        'testing': Config
+    }
+    
+    app.config.from_object(config[config_name])
+    
+    # Configure CORS properly
+    CORS(app, 
+         origins=['http://localhost:3000', 'http://127.0.0.1:3000'],
+         methods=['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+         allow_headers=['Content-Type', 'Authorization'],
+         supports_credentials=True)
+    
+    # Initialize extensions
+    db.init_app(app)
+    
+    # JWT Configuration
+    jwt = JWTManager(app)
+    
+    # Create instance directory
+    os.makedirs(app.instance_path, exist_ok=True)
+    
+    # Create database tables
+    with app.app_context():
+        db.create_all()
+        print("✅ Database tables created successfully")
+    
+    # Initialize Flask-RESTX API
+    api = Api(
+        app,
+        version='1.0',
+        title='Smart Ride Matcher API',
+        description='AI-Powered Bike Ride Sharing Platform for Chennai',
+        doc='/docs/',
+        authorizations={
+            'Bearer': {
+                'type': 'apiKey',
+                'in': 'header',
+                'name': 'Authorization',
+                'description': 'Add "Bearer " before your JWT token'
+            }
+        },
+        security='Bearer'
+    )
+    
+    # Import and register route namespaces
+    from routes.auth_routes import auth_ns
+    from routes.bike_routes import bike_ns
+    from routes.ride_routes import ride_ns
+    from routes.dashboard_routes import dashboard_ns
+    from routes.admin_routes import admin_ns
+    from routes.notification_routes import notification_ns
+    
+    # Register namespaces with API
+    api.add_namespace(auth_ns, path='/api/auth')
+    api.add_namespace(bike_ns, path='/api/bikes')
+    api.add_namespace(ride_ns, path='/api/rides')
+    api.add_namespace(dashboard_ns, path='/api/dashboard')
+    api.add_namespace(admin_ns, path='/api/admin')
+    api.add_namespace(notification_ns, path='/api')
+    
+    # Basic health check endpoint
+    @app.route('/')
+    def home():
+        return jsonify({
+            "message": "🚴‍♂️ Smart Ride Matcher API - Chennai Daily Commute",
+            "status": "active",
+            "version": "1.0.0",
+            "swagger_ui": "/docs/",
+            "features": [
+                "✅ User Authentication (JWT)",
+                "🏍️ Bike Registration & Management",
+                "🛣️ Ride Posting & Searching",
+                "🤝 Join Ride Requests",
+                "📊 User Dashboard & History",
+                "🤖 AI-Powered Route Matching (Coming Soon)",
+                "📍 Chennai Area Coverage",
+                "📱 Mobile-Friendly API"
+            ],
+            "endpoints": {
+                "authentication": "/api/auth/",
+                "bike_management": "/api/bikes/",
+                "ride_management": "/api/rides/",
+                "user_dashboard": "/api/dashboard/",
+                "admin_dashboard": "/api/admin/",
+                "swagger_docs": "/docs/",
+                "health_check": "/"
+            }
+        })
+    
+    # Configuration status endpoint
+    @app.route('/api/status')
+    def status():
+        return jsonify({
+            "database": "SQLite",
+            "authentication": "JWT",
+            "api_docs": "Swagger/OpenAPI",
+            "cors_enabled": True,
+            "debug_mode": app.config.get('DEBUG', False),
+            "azure_openai_configured": config[config_name].is_azure_configured()
+        })
+    
+    return app
+
+def run_app():
+    """Run the Flask application"""
+    # Get environment from environment variable or default to development
+    config_name = os.environ.get('FLASK_ENV', 'development')
+    
+    # Create and run the app
+    app = create_app(config_name)
+    
+    # Run with debug mode in development
+    debug_mode = config_name == 'development'
+    
+    print(f"🚀 Starting Smart Ride Matcher API...")
+    print(f"   Environment: {config_name}")
+    print(f"   Debug Mode: {debug_mode}")
+    print(f"   URL: http://localhost:5000")
+    print(f"   API Docs: http://localhost:5000/docs/")
+    print("=" * 50)
+    
+    app.run(
+        host='0.0.0.0',
+        port=5000,
+        debug=debug_mode,
+        use_reloader=debug_mode
+    )
+
+if __name__ == '__main__':
+    run_app() 

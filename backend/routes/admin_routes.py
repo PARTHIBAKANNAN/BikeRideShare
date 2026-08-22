@@ -353,11 +353,12 @@ class VerifyBikeRegistration(Resource):
             data = request.json
             bike_id = data.get('bike_id')
             action = data.get('action')
+            rejection_reason = data.get('rejection_reason')
             
             if not bike_id or not action:
                 return {'success': False, 'error': 'bike_id and action are required'}, 400
             
-            result = AdminService.verify_bike_registration(current_user_id, bike_id, action)
+            result = AdminService.verify_bike_registration(current_user_id, bike_id, action, rejection_reason)
             return result
             
         except Exception as e:

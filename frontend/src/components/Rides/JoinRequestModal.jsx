@@ -122,6 +122,7 @@ export default function JoinRequestModal({
             </div>
 
             {/* Message to Rider */}
+            {/* Note to Rider */}
             <div>
               <label className="block text-xs font-semibold text-slate-300 mb-1 flex items-center gap-1.5">
                 <MessageSquare className="w-3.5 h-3.5 text-cyan-400" /> Note to Rider
@@ -133,6 +134,20 @@ export default function JoinRequestModal({
                 className="w-full bg-slate-900 border border-slate-700 text-white text-xs rounded-xl p-3 focus:border-emerald-500 focus:outline-none"
                 placeholder="Let the rider know your pickup spot or timings..."
               />
+            </div>
+
+            {/* Helmet Agreement */}
+            <div className="flex items-center gap-2 pt-1 border-t border-slate-800/80">
+              <input
+                type="checkbox"
+                id="passenger_helmet_check"
+                required
+                defaultChecked
+                className="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500 bg-slate-900 border-slate-700"
+              />
+              <label htmlFor="passenger_helmet_check" className="text-xs font-semibold text-emerald-300 cursor-pointer">
+                ⛑️ I agree to wear a helmet during the commute as per Motor Vehicles Act.
+              </label>
             </div>
 
             <button

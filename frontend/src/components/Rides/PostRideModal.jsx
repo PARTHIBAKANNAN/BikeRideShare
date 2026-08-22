@@ -294,19 +294,34 @@ export default function PostRideModal({
               />
             </div>
 
-            {/* Recurring Checkbox */}
-            <div className="flex items-center gap-2 pt-1">
-              <input
-                type="checkbox"
-                id="is_recurring"
-                name="is_recurring"
-                checked={formData.is_recurring}
-                onChange={handleChange}
-                className="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500 bg-slate-900 border-slate-700"
-              />
-              <label htmlFor="is_recurring" className="text-xs font-semibold text-slate-300 cursor-pointer">
-                Recurring Daily Commute (Monday to Friday office pool)
-              </label>
+            {/* Recurring & Safety Helmet Checkboxes */}
+            <div className="space-y-2 pt-1 border-t border-slate-800/80">
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id="is_recurring"
+                  name="is_recurring"
+                  checked={formData.is_recurring}
+                  onChange={handleChange}
+                  className="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500 bg-slate-900 border-slate-700"
+                />
+                <label htmlFor="is_recurring" className="text-xs font-semibold text-slate-300 cursor-pointer">
+                  Recurring Daily Commute (Monday to Friday office pool)
+                </label>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id="helmet_check"
+                  required
+                  defaultChecked
+                  className="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500 bg-slate-900 border-slate-700"
+                />
+                <label htmlFor="helmet_check" className="text-xs font-semibold text-emerald-300 cursor-pointer">
+                  ⛑️ I confirm I will carry a clean ISI safety helmet for the passenger.
+                </label>
+              </div>
             </div>
 
             <button

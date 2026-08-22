@@ -74,20 +74,34 @@ class BikeService:
         if not model:
             errors.append("Model is required")
         
+        # Parse and strictly validate insurance validity date
+        parsed_ins_date = None
+        if not insurance_valid_till:
+            errors.append("Two-Wheeler Insurance validity expiry date is mandatory for safety verification")
+        else:
+            try:
+                from datetime import datetime, date, timedelta
+                if isinstance(insurance_valid_till, str):
+                    parsed_ins_date = datetime.strptime(insurance_valid_till, '%Y-%m-%d').date()
+                elif isinstance(insurance_valid_till, date):
+                    parsed_ins_date = insurance_valid_till
+                
+                today = date.today()
+                min_required_date = today + timedelta(days=30)
+                
+                if parsed_ins_date <= today:
+                    errors.append(f"Vehicle insurance is already expired (expired on {parsed_ins_date.strftime('%d-%m-%Y')}). Please provide a valid active insurance policy.")
+                elif parsed_ins_date < min_required_date:
+                    days_left = (parsed_ins_date - today).days
+                    errors.append(f"Vehicle insurance must have at least 30 days of future validity (expires in {days_left} days on {parsed_ins_date.strftime('%d-%m-%Y')}). Please renew before registering.")
+            except ValueError:
+                errors.append("Invalid date format for insurance validity. Expected YYYY-MM-DD")
+
         if errors:
             return {'success': False, 'errors': errors}
         
         # Create new bike
         try:
-            # Parse insurance date if provided
-            parsed_ins_date = None
-            if insurance_valid_till:
-                try:
-                    if isinstance(insurance_valid_till, str):
-                        parsed_ins_date = datetime.strptime(insurance_valid_till, '%Y-%m-%d').date()
-                except Exception:
-                    pass
-
             new_bike = Bike(
                 user_id=user_id,
                 bike_number=bike_number,
@@ -101,6 +115,8 @@ class BikeService:
                 insurance_number=insurance_number if insurance_number else None,
                 insurance_valid_till=parsed_ins_date,
                 is_verified=False,
+                verification_status='pending',
+                rejection_reason=None,
                 is_active=False
             )
             

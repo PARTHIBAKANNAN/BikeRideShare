@@ -44,6 +44,7 @@ export const rideAPI = {
   cancelRide: (rideId, reason) => api.post(`/api/rides/${rideId}/cancel`, { reason }),
   getPopularRoutes: () => api.get('/api/rides/popular-routes'),
   getMyRequests: () => api.get('/api/rides/my-requests'),
+  verifyRideOtp: (requestId, otp) => api.post(`/api/rides/requests/${requestId}/verify-otp`, { otp }),
 };
 
 // Bike API Methods
@@ -71,8 +72,8 @@ export const adminAPI = {
   verifyLicense: (userId, action, rejectionReason = '') => 
     api.post('/api/admin/license-verifications/verify', { user_id: userId, action, rejection_reason: rejectionReason }),
   getBikeVerifications: () => api.get('/api/admin/bike-verifications'),
-  verifyBike: (bikeId, action) => 
-    api.post('/api/admin/bike-verifications/verify', { bike_id: bikeId, action }),
+  verifyBike: (bikeId, action, rejectionReason = '') => 
+    api.post('/api/admin/bike-verifications/verify', { bike_id: bikeId, action, rejection_reason: rejectionReason }),
   getUsers: (params) => api.get('/api/admin/users', { params }),
   flagUser: (userId, reason) => api.post('/api/admin/users/flag', { user_id: userId, reason }),
   unflagUser: (userId) => api.post('/api/admin/users/unflag', { user_id: userId }),

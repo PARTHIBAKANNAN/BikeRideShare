@@ -255,6 +255,30 @@ class RespondToRequest(Resource):
         except Exception as e:
             return {'success': False, 'error': f'Failed to respond to request: {str(e)}'}, 500
 
+@ride_ns.route('/requests/<int:request_id>/verify-otp')
+class VerifyRideOtp(Resource):
+    @ride_ns.doc('verify_ride_otp', security='Bearer')
+    @ride_ns.response(200, '✅ OTP verified successfully')
+    @ride_ns.response(400, '❌ Invalid OTP')
+    @jwt_required()
+    def post(self, request_id):
+        """Verify 4-digit passenger boarding OTP to start commute"""
+        try:
+            current_user_id = get_jwt_identity()
+            data = request.get_json() or {}
+            otp = data.get('otp', '').strip()
+            
+            if not otp:
+                return {'success': False, 'error': '4-digit OTP is required'}, 400
+                
+            result = RideService.verify_start_otp(current_user_id, request_id, otp)
+            if result['success']:
+                return result, 200
+            else:
+                return result, 400
+        except Exception as e:
+            return {'success': False, 'error': f'Failed to verify OTP: {str(e)}'}, 500
+
 @ride_ns.route('/<int:ride_id>/cancel')
 class CancelRide(Resource):
     @ride_ns.doc('cancel_ride', security='Bearer')

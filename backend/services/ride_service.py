@@ -577,6 +577,9 @@ class RideService:
                 if ride.available_seats <= 0:
                     return {'success': False, 'error': 'No seats available'}
                 
+                import random
+                request.start_otp = f"{random.randint(1000, 9999)}"
+                
                 # Create ride match
                 ride_match = RideMatch(
                     offering_ride_id=ride.id,
@@ -594,7 +597,7 @@ class RideService:
             action = 'accepted' if response == 'accepted' else 'rejected'
             return {
                 'success': True,
-                'message': f'Ride request {action} successfully',
+                'message': f'Ride request {action} successfully. Boarding OTP generated.' if response == 'accepted' else f'Ride request {action}',
                 'request': request.to_dict()
             }
             
@@ -604,6 +607,38 @@ class RideService:
                 'success': False,
                 'error': f'Failed to respond to request: {str(e)}'
             }
+
+    @staticmethod
+    def verify_start_otp(rider_id: int, request_id: int, entered_otp: str) -> dict:
+        """Verify passenger 4-digit OTP to officially begin the ride"""
+        from models.models import db, RideRequest, Ride
+        
+        request = RideRequest.query.get(request_id)
+        if not request:
+            return {'success': False, 'error': 'Ride request not found'}
+        
+        ride = Ride.query.filter_by(id=request.ride_id, rider_id=rider_id).first()
+        if not ride:
+            return {'success': False, 'error': 'You are not the designated rider for this commute'}
+        
+        if not request.start_otp:
+            return {'success': False, 'error': 'No active Boarding OTP found for this passenger'}
+        
+        if str(entered_otp).strip() != str(request.start_otp).strip():
+            return {'success': False, 'error': 'Invalid 4-digit OTP. Please ask the passenger for the correct boarding OTP shown on their screen.'}
+        
+        try:
+            request.status = 'in_progress'
+            ride.status = 'active'
+            db.session.commit()
+            return {
+                'success': True,
+                'message': 'Passenger OTP verified successfully! Commute is now underway.',
+                'request': request.to_dict()
+            }
+        except Exception as e:
+            db.session.rollback()
+            return {'success': False, 'error': f'Failed to verify OTP: {str(e)}'}
     
     @staticmethod
     def cancel_ride(user_id: int, ride_id: int, reason: str = None) -> dict:

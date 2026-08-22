@@ -209,6 +209,47 @@ export default function BikeManager({ currentUser, onProfileUpdated }) {
         </div>
       )}
 
+      {/* RENEWAL ALERT WARNING (If DL or Insurance expires in < 30 days) */}
+      {(() => {
+        const today = new Date();
+        let dlDaysLeft = null;
+        if (currentUser?.license_expiry_date) {
+          const exp = new Date(currentUser.license_expiry_date);
+          dlDaysLeft = Math.ceil((exp - today) / (1000 * 60 * 60 * 24));
+        }
+
+        const nearExpiryBikes = bikes.filter((b) => {
+          if (!b.insurance_valid_till) return false;
+          const exp = new Date(b.insurance_valid_till);
+          const days = Math.ceil((exp - today) / (1000 * 60 * 60 * 24));
+          return days <= 30;
+        });
+
+        if ((dlDaysLeft !== null && dlDaysLeft <= 30) || nearExpiryBikes.length > 0) {
+          return (
+            <div className="p-4 rounded-2xl bg-amber-500/15 border border-amber-500/40 text-amber-200 text-xs space-y-2">
+              <div className="flex items-center gap-2 font-bold text-amber-300 text-sm">
+                <AlertCircle className="w-4 h-4 text-amber-400" />
+                <span>⚠️ Action Required: Document Renewal Alert</span>
+              </div>
+              <ul className="list-disc list-inside space-y-1 text-[11px] text-amber-200/90 pl-1">
+                {dlDaysLeft !== null && dlDaysLeft <= 30 && (
+                  <li>
+                    Your Driving License {dlDaysLeft <= 0 ? 'has expired' : `expires in ${dlDaysLeft} days`} ({currentUser.license_expiry_date}). Please submit your renewed license to continue offering rides.
+                  </li>
+                )}
+                {nearExpiryBikes.map((b) => (
+                  <li key={b.id}>
+                    Vehicle insurance for <strong>{b.bike_number}</strong> expires on {b.insurance_valid_till}. Please update insurance details.
+                  </li>
+                ))}
+              </ul>
+            </div>
+          );
+        }
+        return null;
+      })()}
+
       {/* RIDER VERIFICATION PROGRESS STEPPER */}
       <div className="p-5 sm:p-6 rounded-3xl glass-panel border border-slate-800 space-y-4">
         <div className="flex items-center justify-between">
@@ -218,7 +259,7 @@ export default function BikeManager({ currentUser, onProfileUpdated }) {
               Ride Provider (Rider) Verification Checklist
             </h3>
           </div>
-          <span className="text-[11px] text-slate-400">Admin Approved Required</span>
+          <span className="text-[11px] text-slate-400">Admin Approval Required (&gt;30 Days Validity)</span>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -227,14 +268,16 @@ export default function BikeManager({ currentUser, onProfileUpdated }) {
           <div className={`p-4 rounded-2xl border transition-all ${
             isDLApproved 
               ? 'bg-emerald-950/20 border-emerald-500/40' 
-              : isDLPending 
-                ? 'bg-amber-950/20 border-amber-500/40'
-                : 'bg-slate-900/60 border-slate-800'
+              : isDLRejected
+                ? 'bg-rose-950/20 border-rose-500/40'
+                : isDLPending 
+                  ? 'bg-amber-950/20 border-amber-500/40'
+                  : 'bg-slate-900/60 border-slate-800'
           }`}>
             <div className="flex items-start justify-between">
               <div className="flex items-center gap-2.5">
                 <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${
-                  isDLApproved ? 'bg-emerald-500/20 text-emerald-400' : isDLPending ? 'bg-amber-500/20 text-amber-400' : 'bg-slate-800 text-slate-400'
+                  isDLApproved ? 'bg-emerald-500/20 text-emerald-400' : isDLRejected ? 'bg-rose-500/20 text-rose-400' : isDLPending ? 'bg-amber-500/20 text-amber-400' : 'bg-slate-800 text-slate-400'
                 }`}>
                   <Award className="w-4 h-4" />
                 </div>
@@ -251,21 +294,32 @@ export default function BikeManager({ currentUser, onProfileUpdated }) {
                   <CheckCircle2 className="w-3 h-3" /> Approved
                 </span>
               )}
+              {isDLRejected && (
+                <span className="px-2.5 py-1 rounded-lg bg-rose-500/20 text-rose-300 text-[10px] font-bold border border-rose-500/40 flex items-center gap-1">
+                  <AlertCircle className="w-3 h-3" /> Rejected
+                </span>
+              )}
               {isDLPending && (
                 <span className="px-2.5 py-1 rounded-lg bg-amber-500/20 text-amber-300 text-[10px] font-bold border border-amber-500/40 flex items-center gap-1">
                   <Clock className="w-3 h-3 animate-spin" /> Pending Admin Review
                 </span>
               )}
-              {!currentUser?.license_number && (
+              {!currentUser?.license_number && !isDLRejected && (
                 <span className="px-2.5 py-1 rounded-lg bg-rose-500/20 text-rose-300 text-[10px] font-bold border border-rose-500/40">
                   Required
                 </span>
               )}
             </div>
 
+            {isDLRejected && currentUser?.license_rejection_reason && (
+              <div className="mt-2.5 p-2 rounded-xl bg-rose-500/10 border border-rose-500/20 text-[11px] text-rose-300">
+                <strong>Rejection Reason:</strong> {currentUser.license_rejection_reason}
+              </div>
+            )}
+
             <div className="mt-3 pt-3 border-t border-slate-800/80 flex items-center justify-between text-xs">
               <span className="text-[11px] text-slate-400">
-                {currentUser?.license_expiry_date ? `Valid till: ${currentUser.license_expiry_date}` : 'Tamil Nadu / Indian DL'}
+                {currentUser?.license_expiry_date ? `Valid till: ${currentUser.license_expiry_date}` : 'Must be valid >30 days'}
               </span>
               <button
                 onClick={() => setShowDLModal(true)}
@@ -381,6 +435,10 @@ export default function BikeManager({ currentUser, onProfileUpdated }) {
                     <span className="px-2.5 py-1 rounded-lg bg-emerald-500/20 text-emerald-300 text-[10px] font-bold border border-emerald-500/30 flex items-center gap-1">
                       <CheckCircle2 className="w-3 h-3" /> Verified
                     </span>
+                  ) : b.verification_status === 'rejected' ? (
+                    <span className="px-2.5 py-1 rounded-lg bg-rose-500/20 text-rose-300 text-[10px] font-bold border border-rose-500/30 flex items-center gap-1">
+                      <AlertCircle className="w-3 h-3" /> Rejected
+                    </span>
                   ) : (
                     <span className="px-2.5 py-1 rounded-lg bg-amber-500/20 text-amber-300 text-[10px] font-bold border border-amber-500/30 flex items-center gap-1">
                       <Clock className="w-3 h-3" /> Pending Approval
@@ -388,14 +446,20 @@ export default function BikeManager({ currentUser, onProfileUpdated }) {
                   )}
                 </div>
 
+                {b.verification_status === 'rejected' && b.rejection_reason && (
+                  <div className="mt-2.5 p-2 rounded-xl bg-rose-500/10 border border-rose-500/20 text-[11px] text-rose-300">
+                    <strong>Admin Note:</strong> {b.rejection_reason}
+                  </div>
+                )}
+
                 <div className="mt-4 pt-3 border-t border-slate-800/80 grid grid-cols-2 gap-2 text-xs text-slate-400">
                   <div>
                     <span className="text-[10px] text-slate-500 block">Type & Color:</span>
                     <span className="text-slate-200 capitalize font-medium">{b.bike_type} • {b.color || 'Standard'}</span>
                   </div>
                   <div>
-                    <span className="text-[10px] text-slate-500 block">RC Number:</span>
-                    <span className="text-slate-200 font-mono">{b.rc_number || 'Under Verification'}</span>
+                    <span className="text-[10px] text-slate-500 block">Insurance Expiry:</span>
+                    <span className="text-slate-200 font-mono">{b.insurance_valid_till || 'Not Provided'}</span>
                   </div>
                 </div>
 
@@ -413,7 +477,9 @@ export default function BikeManager({ currentUser, onProfileUpdated }) {
                       Set as Active Bike
                     </button>
                   ) : (
-                    <span className="text-[11px] text-slate-500 italic">Awaiting Admin Verification</span>
+                    <span className="text-[11px] text-slate-500 italic">
+                      {b.verification_status === 'rejected' ? 'Action: Re-register with valid documents' : 'Awaiting Admin Verification'}
+                    </span>
                   )}
                 </div>
               </div>
@@ -440,61 +506,57 @@ export default function BikeManager({ currentUser, onProfileUpdated }) {
             </div>
 
             <form onSubmit={handleAddBike} className="space-y-4">
-              
-              {/* Brand & Model Selectors */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-bold text-slate-300 mb-1">Make / Brand</label>
-                  <select
-                    value={selectedBrand}
-                    onChange={(e) => handleBrandChange(e.target.value)}
-                    className="w-full bg-slate-900 border border-slate-700 text-white text-xs rounded-xl p-3 focus:border-emerald-500 focus:outline-none"
-                  >
-                    {INDIAN_BIKE_CATALOG.map((item) => (
-                      <option key={item.brand} value={item.brand}>
-                        {item.brand}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-slate-300 mb-1">Model</label>
-                  {selectedBrand === 'Other' ? (
-                    <input
-                      type="text"
-                      required
-                      placeholder="Enter Model Name"
-                      value={selectedModel}
-                      onChange={(e) => handleModelChange(e.target.value)}
-                      className="w-full bg-slate-900 border border-slate-700 text-white text-xs rounded-xl p-3 focus:border-emerald-500 focus:outline-none"
-                    />
-                  ) : (
-                    <select
-                      value={selectedModel}
-                      onChange={(e) => handleModelChange(e.target.value)}
-                      className="w-full bg-slate-900 border border-slate-700 text-white text-xs rounded-xl p-3 focus:border-emerald-500 focus:outline-none"
+              {/* Popular Indian Brand Selector */}
+              <div>
+                <label className="block text-xs font-bold text-slate-300 mb-1.5 flex items-center gap-1">
+                  <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
+                  <span>Select Bike Manufacturer / Brand</span>
+                </label>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  {INDIAN_BIKE_CATALOG.map((b) => (
+                    <button
+                      key={b.brand}
+                      type="button"
+                      onClick={() => handleBrandChange(b.brand)}
+                      className={`p-2 rounded-xl text-left border transition-all text-xs flex flex-col justify-between ${
+                        selectedBrand === b.brand
+                          ? 'bg-emerald-500/20 border-emerald-500 text-white font-bold shadow-md shadow-emerald-500/10'
+                          : 'bg-slate-900/80 border-slate-800 text-slate-400 hover:border-slate-700 hover:text-slate-200'
+                      }`}
                     >
-                      {INDIAN_BIKE_CATALOG.find((b) => b.brand === selectedBrand)?.models.map((m) => (
-                        <option key={m} value={m}>
-                          {m}
-                        </option>
-                      ))}
-                    </select>
-                  )}
+                      <span className="truncate">{b.brand}</span>
+                      <span className="text-[10px] text-slate-500 capitalize">{b.type}</span>
+                    </button>
+                  ))}
                 </div>
               </div>
 
-              {/* Registration Number & Type */}
+              {/* Model Dropdown from Catalog */}
+              <div>
+                <label className="block text-xs font-bold text-slate-300 mb-1">
+                  Select {selectedBrand} Model
+                </label>
+                <select
+                  value={selectedModel}
+                  onChange={(e) => handleModelChange(e.target.value)}
+                  className="w-full bg-slate-900 border border-slate-700 text-white text-xs rounded-xl p-3 focus:border-emerald-500 focus:outline-none"
+                >
+                  {INDIAN_BIKE_CATALOG.find((b) => b.brand === selectedBrand)?.models.map((m) => (
+                    <option key={m} value={m}>
+                      {m}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Vehicle Number & Type */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-bold text-slate-300 mb-1">
-                    Registration Plate Number (Tamil Nadu / Indian)
-                  </label>
+                  <label className="block text-xs font-bold text-slate-300 mb-1">Vehicle Plate Number</label>
                   <input
                     type="text"
                     required
-                    placeholder="e.g. TN 09 BX 4521"
+                    placeholder="TN09AB1234"
                     value={bikeForm.bike_number}
                     onChange={(e) => setBikeForm({ ...bikeForm, bike_number: e.target.value })}
                     className="w-full bg-slate-900 border border-slate-700 text-white text-xs rounded-xl p-3 focus:border-emerald-500 focus:outline-none font-mono uppercase"
@@ -510,7 +572,7 @@ export default function BikeManager({ currentUser, onProfileUpdated }) {
                   >
                     <option value="motorcycle">Motorcycle / Standard Bike</option>
                     <option value="scooter">Scooter (Activa, Jupiter, etc.)</option>
-                    <option value="scooter">Electric Scooter / EV (Ather, Ola, Chetak)</option>
+                    <option value="ev">Electric Scooter / EV (Ather, Ola, Chetak)</option>
                   </select>
                 </div>
               </div>
@@ -533,7 +595,7 @@ export default function BikeManager({ currentUser, onProfileUpdated }) {
                   <label className="block text-xs font-bold text-slate-300 mb-1">RC Document Photo / URL</label>
                   <input
                     type="url"
-                    placeholder="https://.../rc_photo.jpg (or photo link)"
+                    placeholder="https://.../rc_photo.jpg"
                     value={bikeForm.rc_image_url}
                     onChange={(e) => setBikeForm({ ...bikeForm, rc_image_url: e.target.value })}
                     className="w-full bg-slate-900 border border-slate-700 text-white text-xs rounded-xl p-3 focus:border-emerald-500 focus:outline-none"
@@ -547,6 +609,7 @@ export default function BikeManager({ currentUser, onProfileUpdated }) {
                   <label className="block text-xs font-bold text-slate-300 mb-1">Insurance Policy Number</label>
                   <input
                     type="text"
+                    required
                     placeholder="e.g. POL-88992211"
                     value={bikeForm.insurance_number}
                     onChange={(e) => setBikeForm({ ...bikeForm, insurance_number: e.target.value })}
@@ -555,14 +618,27 @@ export default function BikeManager({ currentUser, onProfileUpdated }) {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-slate-300 mb-1">Insurance Valid Till</label>
+                  <label className="block text-xs font-bold text-slate-300 mb-1">
+                    Insurance Expiry Date <span className="text-amber-400 text-[10px]">(Must be &gt;30 days)</span>
+                  </label>
                   <input
                     type="date"
+                    required
+                    min={(() => {
+                      const d = new Date();
+                      d.setDate(d.getDate() + 31);
+                      return d.toISOString().split('T')[0];
+                    })()}
                     value={bikeForm.insurance_valid_till}
                     onChange={(e) => setBikeForm({ ...bikeForm, insurance_valid_till: e.target.value })}
                     className="w-full bg-slate-900 border border-slate-700 text-white text-xs rounded-xl p-3 focus:border-emerald-500 focus:outline-none"
                   />
                 </div>
+              </div>
+
+              <div className="p-3 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-[11px] text-amber-300 flex items-start gap-2">
+                <AlertCircle className="w-4 h-4 shrink-0 text-amber-400 mt-0.5" />
+                <span>Strict Safety Rule: Vehicle insurance policy must have a minimum of 30 days remaining validity.</span>
               </div>
 
               <button
@@ -610,10 +686,17 @@ export default function BikeManager({ currentUser, onProfileUpdated }) {
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-300 mb-1">License Expiry Date</label>
+                <label className="block text-xs font-bold text-slate-300 mb-1">
+                  License Expiry Date <span className="text-amber-400 text-[10px]">(Must be &gt;30 days)</span>
+                </label>
                 <input
                   type="date"
                   required
+                  min={(() => {
+                    const d = new Date();
+                    d.setDate(d.getDate() + 31);
+                    return d.toISOString().split('T')[0];
+                  })()}
                   value={licenseExpiryDate}
                   onChange={(e) => setLicenseExpiryDate(e.target.value)}
                   className="w-full bg-slate-900 border border-slate-700 text-white text-xs rounded-xl p-3 focus:border-emerald-500 focus:outline-none"
@@ -631,8 +714,9 @@ export default function BikeManager({ currentUser, onProfileUpdated }) {
                 />
               </div>
 
-              <div className="p-3 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-[11px] text-emerald-300">
-                Admin (<span className="font-mono">admin@gmail.com</span>) will review and approve your DL to unlock ride offering.
+              <div className="p-3 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-[11px] text-amber-300 flex items-start gap-2">
+                <AlertCircle className="w-4 h-4 shrink-0 text-amber-400 mt-0.5" />
+                <span>Driving license must have at least 30 days of future validity. Admin will review before approving.</span>
               </div>
 
               <button

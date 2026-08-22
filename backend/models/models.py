@@ -125,6 +125,8 @@ class Bike(db.Model):
     # Status
     is_active = db.Column(db.Boolean, default=False)  # Only one bike can be active per user
     is_verified = db.Column(db.Boolean, default=False)
+    verification_status = db.Column(db.String(20), default='pending')  # pending/approved/rejected
+    rejection_reason = db.Column(db.String(255), nullable=True)
     
     # Timestamps
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
@@ -145,6 +147,8 @@ class Bike(db.Model):
             'insurance_valid_till': self.insurance_valid_till.isoformat() if self.insurance_valid_till else None,
             'is_active': self.is_active,
             'is_verified': self.is_verified,
+            'verification_status': self.verification_status or ('approved' if self.is_verified else 'pending'),
+            'rejection_reason': self.rejection_reason,
             'created_at': self.created_at.isoformat() if self.created_at else None
         }
 
@@ -299,6 +303,7 @@ class RideRequest(db.Model):
     # Status
     status = db.Column(db.String(20), default='pending')  # pending/accepted/rejected/active/matched/cancelled
     message = db.Column(db.Text, nullable=True)
+    start_otp = db.Column(db.String(4), nullable=True)  # 4-digit physical boarding handshake OTP
     
     # Response tracking
     responded_at = db.Column(db.DateTime, nullable=True)
@@ -314,6 +319,7 @@ class RideRequest(db.Model):
             'ride_id': self.ride_id,
             'status': self.status,
             'message': self.message,
+            'start_otp': self.start_otp,
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'responded_at': self.responded_at.isoformat() if self.responded_at else None,
         }

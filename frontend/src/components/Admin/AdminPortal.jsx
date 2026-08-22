@@ -33,6 +33,16 @@ export default function AdminPortal() {
   const [actionLoading, setActionLoading] = useState(null);
   const [msg, setMsg] = useState('');
   const [previewImage, setPreviewImage] = useState(null);
+  const [rejectModal, setRejectModal] = useState({ open: false, type: '', id: null, title: '', reason: '' });
+
+  const REJECTION_PRESETS = [
+    "Blurry or unreadable document photograph",
+    "Expired document / Less than 30 days future validity",
+    "Name on document does not match account name",
+    "Vehicle registration number mismatch on RC",
+    "Invalid vehicle category (must be a valid two-wheeler)",
+    "Expired commercial/third-party insurance policy"
+  ];
 
   useEffect(() => {
     fetchAdminData();
@@ -77,13 +87,14 @@ export default function AdminPortal() {
     }
   };
 
-  const handleVerifyLicense = async (userId, action) => {
+  const handleVerifyLicense = async (userId, action, reason = '') => {
     setActionLoading(`dl-${userId}`);
     try {
-      const res = await adminAPI.verifyLicense(userId, action);
+      const res = await adminAPI.verifyLicense(userId, action, reason);
       if (res.data && res.data.success) {
         setMsg(`Driver License ${action === 'approve' ? 'Approved' : 'Rejected'} successfully!`);
         if (action === 'approve') confetti({ particleCount: 60, spread: 70 });
+        setRejectModal({ open: false, type: '', id: null, title: '', reason: '' });
         fetchAdminData();
       }
     } catch (e) {
@@ -93,19 +104,32 @@ export default function AdminPortal() {
     }
   };
 
-  const handleVerifyBike = async (bikeId, action) => {
+  const handleVerifyBike = async (bikeId, action, reason = '') => {
     setActionLoading(`bike-${bikeId}`);
     try {
-      const res = await adminAPI.verifyBike(bikeId, action);
+      const res = await adminAPI.verifyBike(bikeId, action, reason);
       if (res.data && res.data.success) {
         setMsg(`Two-Wheeler ${action === 'approve' ? 'Approved' : 'Rejected'} successfully!`);
         if (action === 'approve') confetti({ particleCount: 60, spread: 70 });
+        setRejectModal({ open: false, type: '', id: null, title: '', reason: '' });
         fetchAdminData();
       }
     } catch (e) {
       console.error(e);
     } finally {
       setActionLoading(null);
+    }
+  };
+
+  const confirmRejection = () => {
+    if (!rejectModal.reason) {
+      alert('Please specify or select a reason for rejection.');
+      return;
+    }
+    if (rejectModal.type === 'dl') {
+      handleVerifyLicense(rejectModal.id, 'reject', rejectModal.reason);
+    } else if (rejectModal.type === 'bike') {
+      handleVerifyBike(rejectModal.id, 'reject', rejectModal.reason);
     }
   };
 
@@ -255,8 +279,21 @@ export default function AdminPortal() {
                         <span className="flex items-center gap-1"><Mail className="w-3 h-3 text-slate-500" /> {u.email}</span>
                       </div>
 
-                      <div className="text-xs text-purple-300 font-mono font-bold pt-1">
-                        DL No: {u.license_number || 'N/A'} {u.license_expiry_date && <span className="text-slate-400 font-normal"> (Expires: {u.license_expiry_date})</span>}
+                      <div className="text-xs text-purple-300 font-mono font-bold pt-1 flex items-center gap-2 flex-wrap">
+                        <span>DL No: {u.license_number || 'N/A'}</span>
+                        {u.license_expiry_date && (
+                          <span className="text-slate-400 font-normal"> (Valid till: {u.license_expiry_date})</span>
+                        )}
+                        {u.is_critical_expiry && (
+                          <span className="px-2 py-0.5 rounded bg-rose-500/20 text-rose-300 border border-rose-500/40 text-[10px] font-bold">
+                            ⚠️ Critical: {u.days_until_expiry <= 0 ? 'Expired' : `Expires in ${u.days_until_expiry}d`}
+                          </span>
+                        )}
+                        {u.is_near_expiry && !u.is_critical_expiry && (
+                          <span className="px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/40 text-[10px] font-bold">
+                            ⚠️ Near Expiry: {u.days_until_expiry}d left
+                          </span>
+                        )}
                       </div>
 
                       {u.license_image_url && (
@@ -280,7 +317,13 @@ export default function AdminPortal() {
 
                       <button
                         disabled={actionLoading === `dl-${u.id || u.user_id}`}
-                        onClick={() => handleVerifyLicense(u.id || u.user_id, 'reject')}
+                        onClick={() => setRejectModal({
+                          open: true,
+                          type: 'dl',
+                          id: u.id || u.user_id,
+                          title: `Reject DL for ${u.name}`,
+                          reason: REJECTION_PRESETS[0]
+                        })}
                         className="px-4 py-2 rounded-xl bg-rose-600/30 hover:bg-rose-600/50 text-rose-300 border border-rose-500/40 text-xs font-bold flex items-center gap-1.5 transition-colors disabled:opacity-50"
                       >
                         <XCircle className="w-3.5 h-3.5" /> Reject
@@ -324,6 +367,16 @@ export default function AdminPortal() {
                       <div className="text-xs text-slate-400 flex flex-wrap items-center gap-3 pt-0.5">
                         <span>RC No: <strong className="text-slate-200 font-mono">{b.rc_number || 'N/A'}</strong></span>
                         {b.insurance_valid_till && <span>Insurance Till: <strong className="text-slate-200">{b.insurance_valid_till}</strong></span>}
+                        {b.is_critical_insurance_expiry && (
+                          <span className="px-2 py-0.5 rounded bg-rose-500/20 text-rose-300 border border-rose-500/40 text-[10px] font-bold">
+                            ⚠️ Ins. Critical: {b.days_until_insurance_expiry <= 0 ? 'Expired' : `${b.days_until_insurance_expiry}d left`}
+                          </span>
+                        )}
+                        {b.is_near_insurance_expiry && !b.is_critical_insurance_expiry && (
+                          <span className="px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/40 text-[10px] font-bold">
+                            ⚠️ Ins. Expiring: {b.days_until_insurance_expiry}d
+                          </span>
+                        )}
                       </div>
 
                       {b.rc_image_url && (
@@ -347,7 +400,13 @@ export default function AdminPortal() {
 
                       <button
                         disabled={actionLoading === `bike-${b.bike_id || b.id}`}
-                        onClick={() => handleVerifyBike(b.bike_id || b.id, 'reject')}
+                        onClick={() => setRejectModal({
+                          open: true,
+                          type: 'bike',
+                          id: b.bike_id || b.id,
+                          title: `Reject ${b.brand} ${b.model} (${b.bike_number})`,
+                          reason: REJECTION_PRESETS[0]
+                        })}
                         className="px-4 py-2 rounded-xl bg-rose-600/30 hover:bg-rose-600/50 text-rose-300 border border-rose-500/40 text-xs font-bold flex items-center gap-1.5 transition-colors disabled:opacity-50"
                       >
                         <XCircle className="w-3.5 h-3.5" /> Reject
@@ -424,6 +483,58 @@ export default function AdminPortal() {
               ))}
             </div>
           )}
+        </div>
+      )}
+
+      {/* REJECTION REASON MODAL */}
+      {rejectModal.open && (
+        <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-md">
+          <div className="glass-modal max-w-md w-full rounded-3xl p-6 border border-slate-700 shadow-2xl space-y-4">
+            <div className="flex items-center justify-between pb-2 border-b border-slate-800">
+              <h4 className="text-sm font-bold text-rose-300 font-outfit flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 text-rose-400" />
+                <span>{rejectModal.title}</span>
+              </h4>
+              <button onClick={() => setRejectModal({ open: false, type: '', id: null, title: '', reason: '' })} className="text-slate-400 hover:text-white font-bold">✕</button>
+            </div>
+
+            <div className="space-y-3 text-xs">
+              <label className="block text-slate-300 font-bold">Select Preset Rejection Reason:</label>
+              <select
+                value={rejectModal.reason}
+                onChange={(e) => setRejectModal((prev) => ({ ...prev, reason: e.target.value }))}
+                className="w-full bg-slate-900 border border-slate-700 text-white rounded-xl p-3 focus:outline-none focus:border-rose-500 text-xs"
+              >
+                {REJECTION_PRESETS.map((p, idx) => (
+                  <option key={idx} value={p}>{p}</option>
+                ))}
+              </select>
+
+              <label className="block text-slate-300 font-bold mt-2">Or Type Custom Admin Note:</label>
+              <textarea
+                rows={2}
+                value={rejectModal.reason}
+                onChange={(e) => setRejectModal((prev) => ({ ...prev, reason: e.target.value }))}
+                placeholder="Explain why this document was rejected..."
+                className="w-full bg-slate-900 border border-slate-700 text-white rounded-xl p-3 focus:outline-none focus:border-rose-500 text-xs"
+              />
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2">
+              <button
+                onClick={() => setRejectModal({ open: false, type: '', id: null, title: '', reason: '' })}
+                className="px-4 py-2 rounded-xl bg-slate-800 text-slate-300 font-bold text-xs"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmRejection}
+                className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs shadow-lg"
+              >
+                Confirm Rejection
+              </button>
+            </div>
+          </div>
         </div>
       )}
 

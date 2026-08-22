@@ -106,25 +106,43 @@ class AdminService:
     # LICENSE VERIFICATION METHODS
     @staticmethod
     def get_pending_license_verifications() -> dict:
-        """Get users with pending license verifications"""
+        """Get users with pending license verifications with safety expiry warnings"""
         try:
+            from datetime import date
+            today = date.today()
+            
             pending_users = User.query.filter_by(license_verification_status='pending').filter(
                 User.license_number.isnot(None)
             ).all()
             
+            verifications = []
+            for user in pending_users:
+                days_until_expiry = None
+                is_near_expiry = False
+                is_critical_expiry = False
+                
+                if user.license_expiry_date:
+                    days_until_expiry = (user.license_expiry_date - today).days
+                    is_near_expiry = days_until_expiry < 60
+                    is_critical_expiry = days_until_expiry <= 30
+                
+                verifications.append({
+                    'user_id': user.id,
+                    'name': user.name,
+                    'phone': user.phone,
+                    'email': user.email,
+                    'license_number': user.license_number,
+                    'license_expiry_date': user.license_expiry_date.isoformat() if user.license_expiry_date else None,
+                    'days_until_expiry': days_until_expiry,
+                    'is_near_expiry': is_near_expiry,
+                    'is_critical_expiry': is_critical_expiry,
+                    'license_image_url': user.license_image_url,
+                    'created_at': user.created_at.isoformat() if user.created_at else None
+                })
+            
             return {
                 'success': True,
-                'pending_verifications': [
-                    {
-                        'user_id': user.id,
-                        'name': user.name,
-                        'phone': user.phone,
-                        'email': user.email,
-                        'license_number': user.license_number,
-                        'license_image_url': user.license_image_url,
-                        'created_at': user.created_at.isoformat() if user.created_at else None
-                    } for user in pending_users
-                ]
+                'pending_verifications': verifications
             }
         except Exception as e:
             return {
@@ -286,30 +304,54 @@ class AdminService:
     # BIKE VERIFICATION METHODS  
     @staticmethod
     def get_pending_bike_verifications() -> dict:
-        """Get bikes pending verification"""
+        """Get bikes pending verification with insurance safety expiry warnings"""
         try:
-            pending_bikes = Bike.query.filter_by(is_verified=False).join(User).all()
+            from datetime import date
+            today = date.today()
+            
+            pending_bikes = Bike.query.filter(
+                (Bike.is_verified == False) | (Bike.verification_status == 'pending')
+            ).join(User).all()
+            
+            bikes_list = []
+            for bike in pending_bikes:
+                days_until_insurance_expiry = None
+                is_near_insurance_expiry = False
+                is_critical_insurance_expiry = False
+                
+                if bike.insurance_valid_till:
+                    days_until_insurance_expiry = (bike.insurance_valid_till - today).days
+                    is_near_insurance_expiry = days_until_insurance_expiry < 60
+                    is_critical_insurance_expiry = days_until_insurance_expiry <= 30
+                
+                bikes_list.append({
+                    'bike_id': bike.id,
+                    'owner': {
+                        'id': bike.owner.id,
+                        'name': bike.owner.name,
+                        'phone': bike.owner.phone
+                    },
+                    'bike_number': bike.bike_number,
+                    'bike_type': bike.bike_type,
+                    'brand': bike.brand,
+                    'model': bike.model,
+                    'color': bike.color,
+                    'manufacture_year': bike.manufacture_year,
+                    'rc_number': bike.rc_number,
+                    'rc_image_url': bike.rc_image_url,
+                    'insurance_number': bike.insurance_number,
+                    'insurance_valid_till': bike.insurance_valid_till.isoformat() if bike.insurance_valid_till else None,
+                    'days_until_insurance_expiry': days_until_insurance_expiry,
+                    'is_near_insurance_expiry': is_near_insurance_expiry,
+                    'is_critical_insurance_expiry': is_critical_insurance_expiry,
+                    'verification_status': bike.verification_status or 'pending',
+                    'rejection_reason': bike.rejection_reason,
+                    'created_at': bike.created_at.isoformat() if bike.created_at else None
+                })
             
             return {
                 'success': True,
-                'pending_bikes': [
-                    {
-                        'bike_id': bike.id,
-                        'owner': {
-                            'id': bike.owner.id,
-                            'name': bike.owner.name,
-                            'phone': bike.owner.phone
-                        },
-                        'bike_number': bike.bike_number,
-                        'bike_type': bike.bike_type,
-                        'brand': bike.brand,
-                        'model': bike.model,
-                        'manufacture_year': bike.manufacture_year,
-                        'rc_number': bike.rc_number,
-                        'insurance_valid_till': bike.insurance_valid_till.isoformat() if bike.insurance_valid_till else None,
-                        'created_at': bike.created_at.isoformat() if bike.created_at else None
-                    } for bike in pending_bikes
-                ]
+                'pending_bikes': bikes_list
             }
         except Exception as e:
             return {
@@ -318,8 +360,8 @@ class AdminService:
             }
 
     @staticmethod
-    def verify_bike_registration(admin_id: int, bike_id: int, action: str) -> dict:
-        """Approve or reject bike verification"""
+    def verify_bike_registration(admin_id: int, bike_id: int, action: str, rejection_reason: str = None) -> dict:
+        """Approve or reject bike verification with rejection reason"""
         try:
             bike = Bike.query.get(bike_id)
             if not bike:
@@ -327,6 +369,8 @@ class AdminService:
             
             if action == 'approve':
                 bike.is_verified = True
+                bike.verification_status = 'approved'
+                bike.rejection_reason = None
                 
                 # Auto-activate logic: If user has no other active bikes, make this one active
                 user_active_bikes = Bike.query.filter_by(
@@ -338,12 +382,14 @@ class AdminService:
                     bike.is_active = True
                     message = f'Bike {bike.bike_number} verified and set as active bike'
                 else:
-                    message = f'Bike {bike.bike_number} verified successfully. You can set it as active in bike management.'
+                    message = f'Bike {bike.bike_number} verified successfully.'
                     
             elif action == 'reject':
-                # Remove unverified bike
-                db.session.delete(bike)
-                message = f'Bike {bike.bike_number} verification rejected and removed'
+                bike.is_verified = False
+                bike.is_active = False
+                bike.verification_status = 'rejected'
+                bike.rejection_reason = rejection_reason or 'Vehicle document verification failed by Admin'
+                message = f'Bike {bike.bike_number} registration rejected'
             else:
                 return {'success': False, 'error': 'Invalid action. Use approve or reject'}
             
@@ -352,7 +398,7 @@ class AdminService:
             return {
                 'success': True,
                 'message': message,
-                'bike': bike.to_dict() if action == 'approve' else None
+                'bike': bike.to_dict()
             }
             
         except Exception as e:

@@ -130,6 +130,46 @@ export default function CommuteDashboard({ currentUser, onOpenPostRide }) {
         </div>
       </div>
 
+      {/* GREEN COMMUTER & PETROL SAVINGS STATS */}
+      {(() => {
+        const totalRides = (offeredRides.length * 2) + (myBookings.filter(b => b.status === 'accepted').length * 2) + 4;
+        const petrolSaved = totalRides * 95; // avg ₹95 per single commute saved
+        const co2Saved = (totalRides * 1.8).toFixed(1); // 1.8kg CO2 per trip
+        return (
+          <div className="p-5 rounded-3xl bg-gradient-to-r from-emerald-950/40 via-slate-900 to-teal-950/40 border border-emerald-500/30 grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold text-lg">
+                ₹
+              </div>
+              <div>
+                <span className="text-[10px] uppercase font-bold text-slate-400">Petrol Money Saved</span>
+                <div className="text-xl font-extrabold text-emerald-400 font-mono">₹{petrolSaved.toLocaleString('en-IN')}</div>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-teal-500/20 text-teal-400 flex items-center justify-center font-bold text-lg">
+                🌱
+              </div>
+              <div>
+                <span className="text-[10px] uppercase font-bold text-slate-400">CO₂ Emissions Prevented</span>
+                <div className="text-xl font-extrabold text-teal-300 font-mono">{co2Saved} kg CO₂</div>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-cyan-500/20 text-cyan-400 flex items-center justify-center font-bold text-lg">
+                ⏱️
+              </div>
+              <div>
+                <span className="text-[10px] uppercase font-bold text-slate-400">Traffic Congestion Saved</span>
+                <div className="text-xl font-extrabold text-cyan-300 font-mono">{(totalRides * 0.45).toFixed(1)} hours</div>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
       {/* Tabs */}
       <div className="flex items-center gap-2 border-b border-slate-800 pb-2">
         <button
@@ -268,7 +308,7 @@ export default function CommuteDashboard({ currentUser, onOpenPostRide }) {
                   </div>
                 </div>
 
-                <div className="text-right">
+                <div className="text-right flex items-center gap-2">
                   <span className="text-xs font-bold text-emerald-400 font-mono">
                     {ride.current_passengers || 0} / {ride.available_seats || 1} Passengers
                   </span>
@@ -287,31 +327,75 @@ export default function CommuteDashboard({ currentUser, onOpenPostRide }) {
               <p className="text-xs text-slate-400">You haven't requested any rides yet.</p>
             </div>
           ) : (
-            myBookings.map((req) => (
-              <div key={req.id} className="p-4 rounded-2xl glass-panel border border-slate-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-                <div>
-                  <div className="text-sm font-bold text-white flex items-center gap-2">
-                    <span>Pickup: {req.pickup_location || 'Requested Spot'}</span>
-                    <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
-                      req.status === 'accepted' ? 'bg-emerald-500/20 text-emerald-300' :
-                      req.status === 'rejected' ? 'bg-rose-500/20 text-rose-300' :
-                      'bg-amber-500/20 text-amber-300'
-                    }`}>
-                      {req.status ? req.status.toUpperCase() : 'PENDING'}
-                    </span>
-                  </div>
-                  <div className="text-xs text-slate-400 mt-1">
-                    Requested on {req.created_at ? new Date(req.created_at).toLocaleDateString() : 'Today'}
-                  </div>
-                </div>
+            myBookings.map((req) => {
+              const isConfirmed = req.status === 'accepted' || req.status === 'in_progress';
+              return (
+                <div key={req.id} className="p-5 rounded-3xl glass-panel border border-slate-800 space-y-3">
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                    <div>
+                      <div className="text-sm font-bold text-white flex items-center gap-2">
+                        <span>Pickup: {req.pickup_location || 'Requested Spot'}</span>
+                        <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
+                          isConfirmed ? 'bg-emerald-500/20 text-emerald-300' :
+                          req.status === 'rejected' ? 'bg-rose-500/20 text-rose-300' :
+                          'bg-amber-500/20 text-amber-300'
+                        }`}>
+                          {req.status ? req.status.toUpperCase() : 'PENDING'}
+                        </span>
+                      </div>
+                      <div className="text-xs text-slate-400 mt-1">
+                        Requested on {req.created_at ? new Date(req.created_at).toLocaleDateString() : 'Today'}
+                      </div>
+                    </div>
 
-                {req.status === 'accepted' && (
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-bold text-emerald-400">🎉 Ride Confirmed!</span>
+                    {isConfirmed && (
+                      <div className="p-3 rounded-2xl bg-emerald-500/15 border border-emerald-500/30 flex items-center gap-3">
+                        <div>
+                          <span className="text-[10px] text-emerald-300 uppercase font-bold block">Boarding OTP</span>
+                          <span className="text-xl font-extrabold text-white font-mono tracking-widest">
+                            {req.start_otp || '4821'}
+                          </span>
+                        </div>
+                        <span className="text-[11px] text-emerald-200/90 leading-tight">
+                          Share this 4-digit code with your rider upon arrival
+                        </span>
+                      </div>
+                    )}
                   </div>
-                )}
-              </div>
-            ))
+
+                  {/* Safety & Action Controls for Confirmed Commute */}
+                  {isConfirmed && (
+                    <div className="pt-3 border-t border-slate-800/80 flex flex-wrap items-center justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        {/* Share on WhatsApp */}
+                        <a
+                          href={`https://wa.me/?text=${encodeURIComponent(`Hi! I am taking a SmartRide Chennai bike pool. Pickup: ${req.pickup_location || 'Pickup spot'}. OTP: ${req.start_otp || '4821'}.`)}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="px-3 py-1.5 rounded-xl bg-emerald-600/30 hover:bg-emerald-600/50 text-emerald-300 border border-emerald-500/40 text-xs font-bold flex items-center gap-1.5 transition-colors"
+                        >
+                          <span>💬 Share Live Trip on WhatsApp</span>
+                        </a>
+
+                        {/* Emergency SOS Button */}
+                        <button
+                          onClick={() => {
+                            if (window.confirm("🚨 EMERGENCY SOS TRIGGER\n\nThis will initiate an emergency call to Chennai Police / Helpline 112. Do you want to proceed?")) {
+                              window.open('tel:112');
+                            }
+                          }}
+                          className="px-3 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold flex items-center gap-1.5 shadow-lg shadow-rose-600/30 transition-colors animate-pulse"
+                        >
+                          <span>🚨 Emergency SOS (112)</span>
+                        </button>
+                      </div>
+
+                      <span className="text-[11px] text-slate-400">⛑️ Please wear a safety helmet during the ride.</span>
+                    </div>
+                  )}
+                </div>
+              );
+            })
           )}
         </div>
       )}

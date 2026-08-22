@@ -356,6 +356,29 @@ class AuthService:
         elif len(license_number) < 5:
             errors.append("License number must be at least 5 characters")
         
+        # Parse and strictly validate DL expiry date
+        parsed_expiry_date = None
+        if not license_expiry_date:
+            errors.append("Driving License expiry date is required for safety verification")
+        else:
+            try:
+                from datetime import datetime, date, timedelta
+                if isinstance(license_expiry_date, str):
+                    parsed_expiry_date = datetime.strptime(license_expiry_date, '%Y-%m-%d').date()
+                elif isinstance(license_expiry_date, date):
+                    parsed_expiry_date = license_expiry_date
+                
+                today = date.today()
+                min_required_date = today + timedelta(days=30)
+                
+                if parsed_expiry_date <= today:
+                    errors.append(f"Driving License is already expired (expired on {parsed_expiry_date.strftime('%d-%m-%Y')}). Please upload a renewed valid license.")
+                elif parsed_expiry_date < min_required_date:
+                    days_left = (parsed_expiry_date - today).days
+                    errors.append(f"Driving License must have at least 30 days of future validity (expires in {days_left} days on {parsed_expiry_date.strftime('%d-%m-%Y')}). Please renew before submitting.")
+            except ValueError:
+                errors.append("Invalid date format for license expiry date. Expected YYYY-MM-DD")
+
         # Check if license number is already used by another user
         existing_license = User.query.filter(
             User.license_number == license_number,
@@ -369,17 +392,9 @@ class AuthService:
             return {'success': False, 'errors': errors}
         
         try:
-            # Parse expiry date if provided
-            if license_expiry_date:
-                try:
-                    if isinstance(license_expiry_date, str):
-                        from datetime import datetime
-                        user.license_expiry_date = datetime.strptime(license_expiry_date, '%Y-%m-%d').date()
-                except Exception:
-                    pass
-                    
             # Update user license information
             user.license_number = license_number
+            user.license_expiry_date = parsed_expiry_date
             user.license_image_url = license_image_url if license_image_url else None
             user.license_verification_status = 'pending'
             user.license_verified = False

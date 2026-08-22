@@ -202,18 +202,46 @@ export default function RideSearch({
           </div>
         </form>
 
-        {/* Quick Corridor Buttons */}
-        <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-slate-800">
-          <span className="text-[11px] font-semibold text-slate-400">Popular Corridors:</span>
-          {POPULAR_CORRIDORS.map((c, i) => (
-            <button
-              key={i}
-              onClick={() => handleCorridorClick(c)}
-              className="px-3 py-1 rounded-full bg-slate-800/80 hover:bg-slate-700/80 border border-slate-700/60 text-slate-300 hover:text-white text-[11px] font-medium transition-colors"
-            >
-              {c.title}
-            </button>
-          ))}
+        {/* Quick Tech Park Hubs & Corridor Filters */}
+        <div className="space-y-2 pt-2 border-t border-slate-800">
+          <div className="flex flex-wrap items-center gap-1.5">
+            <span className="text-[11px] font-bold text-emerald-400 flex items-center gap-1 mr-1">
+              🏢 Tech Park Hubs:
+            </span>
+            {[
+              { title: 'DLF Cybercity', from: 'Porur', to: 'DLF IT Park' },
+              { title: 'Olympia Tech Park', from: 'Maduravoyal', to: 'Olympia Tech Park' },
+              { title: 'Tidel & Ramanujan', from: 'Tambaram', to: 'Tidel Park' },
+              { title: 'ELCOT SEZ (OMR)', from: 'Medavakkam', to: 'ELCOT SEZ Sholinganallur' },
+              { title: 'Siruseri SIPCOT', from: 'Velachery', to: 'Siruseri SIPCOT' },
+              { title: 'One IndiaBulls (Ambattur)', from: 'Anna Nagar', to: 'Ambattur IT Park' },
+            ].map((hub, i) => (
+              <button
+                key={i}
+                type="button"
+                onClick={() => handleCorridorClick(hub)}
+                className="px-2.5 py-1 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/25 border border-emerald-500/30 text-emerald-300 hover:text-white text-[11px] font-medium transition-all"
+              >
+                {hub.title}
+              </button>
+            ))}
+          </div>
+
+          <div className="flex flex-wrap items-center gap-1.5 pt-1">
+            <span className="text-[11px] font-bold text-slate-400 flex items-center gap-1 mr-1">
+              🛣️ Road Corridors:
+            </span>
+            {POPULAR_CORRIDORS.map((c, i) => (
+              <button
+                key={i}
+                type="button"
+                onClick={() => handleCorridorClick(c)}
+                className="px-2.5 py-1 rounded-xl bg-slate-800/90 hover:bg-slate-700 border border-slate-700/60 text-slate-300 hover:text-white text-[11px] font-medium transition-colors"
+              >
+                {c.title}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 

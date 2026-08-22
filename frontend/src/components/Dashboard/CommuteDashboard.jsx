@@ -11,6 +11,28 @@ export default function CommuteDashboard({ currentUser, onOpenPostRide }) {
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(null);
+  
+  // AI Shift Auto-Pool State
+  const [shiftRoutine, setShiftRoutine] = useState({
+    home: currentUser?.home_location || 'Tambaram',
+    work: currentUser?.work_location || 'DLF Cybercity',
+    time: '08:30'
+  });
+  const [autoPoolMatches, setAutoPoolMatches] = useState([]);
+  const [autoPoolLoading, setAutoPoolLoading] = useState(false);
+
+  // Leaderboard State
+  const [leaderboard, setLeaderboard] = useState([]);
+
+  // Rating Modal State
+  const [rateModal, setRateModal] = useState({
+    open: false,
+    requestId: null,
+    name: '',
+    rating: 5,
+    feedback: '',
+    badges: ['helmet_provided']
+  });
 
   useEffect(() => {
     fetchDashboardData();
@@ -57,6 +79,54 @@ export default function CommuteDashboard({ currentUser, onOpenPostRide }) {
       console.error(err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleFetchAutoPool = async () => {
+    setAutoPoolLoading(true);
+    try {
+      const res = await rideAPI.getAutoPoolMatches({
+        home_location: shiftRoutine.home,
+        work_location: shiftRoutine.work,
+        shift_time: shiftRoutine.time
+      });
+      if (res.data && res.data.success) {
+        setAutoPoolMatches(res.data.auto_matches || []);
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setAutoPoolLoading(false);
+    }
+  };
+
+  const handleFetchLeaderboard = async () => {
+    try {
+      const res = await rideAPI.getGreenLeaderboard();
+      if (res.data && res.data.success) {
+        setLeaderboard(res.data.leaderboard || []);
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const handleSubmitRating = async () => {
+    if (!rateModal.requestId) return;
+    try {
+      const res = await rideAPI.rateRide(rateModal.requestId, {
+        rating: rateModal.rating,
+        feedback: rateModal.feedback,
+        badges: rateModal.badges
+      });
+      if (res.data && res.data.success) {
+        confetti({ particleCount: 60, spread: 60 });
+        alert(res.data.message || 'Rating submitted successfully!');
+        setRateModal({ open: false, requestId: null, name: '', rating: 5, feedback: '', badges: [] });
+      }
+    } catch (e) {
+      console.error(e);
+      alert('Failed to submit rating.');
     }
   };
 
@@ -208,6 +278,34 @@ export default function CommuteDashboard({ currentUser, onOpenPostRide }) {
           }`}
         >
           My Booked Requests ({myBookings.length})
+        </button>
+
+        <button
+          onClick={() => {
+            setActiveTab('autopool');
+            handleFetchAutoPool();
+          }}
+          className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
+            activeTab === 'autopool'
+              ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 font-extrabold'
+              : 'text-slate-400 hover:text-white'
+          }`}
+        >
+          <Sparkles className="w-3.5 h-3.5" /> AI Daily Shift Auto-Pool
+        </button>
+
+        <button
+          onClick={() => {
+            setActiveTab('leaderboard');
+            handleFetchLeaderboard();
+          }}
+          className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
+            activeTab === 'leaderboard'
+              ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30 font-extrabold'
+              : 'text-slate-400 hover:text-white'
+          }`}
+        >
+          🏆 Tech Park Green Leaderboard
         </button>
       </div>
 
@@ -388,6 +486,14 @@ export default function CommuteDashboard({ currentUser, onOpenPostRide }) {
                         >
                           <span>🚨 Emergency SOS (112)</span>
                         </button>
+
+                        {/* Rate Rider Button */}
+                        <button
+                          onClick={() => setRateModal({ open: true, requestId: req.id, name: req.rider_name || 'Rider', rating: 5, feedback: '', badges: ['helmet_provided'] })}
+                          className="px-3 py-1.5 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 text-xs font-bold flex items-center gap-1 transition-colors"
+                        >
+                          <span>⭐ Rate & Review</span>
+                        </button>
                       </div>
 
                       <span className="text-[11px] text-slate-400">⛑️ Please wear a safety helmet during the ride.</span>
@@ -397,6 +503,226 @@ export default function CommuteDashboard({ currentUser, onOpenPostRide }) {
               );
             })
           )}
+        </div>
+      )}
+
+      {/* Tab 4: AI Daily Shift Auto-Pool Matcher */}
+      {activeTab === 'autopool' && (
+        <div className="space-y-4">
+          <div className="p-6 rounded-3xl glass-panel border border-cyan-500/30 bg-cyan-950/20 space-y-4">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+              <div>
+                <h3 className="text-base font-bold text-white font-outfit flex items-center gap-2">
+                  <Sparkles className="w-5 h-5 text-cyan-400" />
+                  <span>AI Daily Shift Routine Matcher</span>
+                </h3>
+                <p className="text-xs text-slate-300 mt-0.5">
+                  Set your daily Chennai office corridor routine. AI automatically pairs you with regular co-commuters.
+                </p>
+              </div>
+
+              <button
+                onClick={handleFetchAutoPool}
+                disabled={autoPoolLoading}
+                className="px-4 py-2 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold flex items-center gap-1.5 shadow-md disabled:opacity-50"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${autoPoolLoading ? 'animate-spin' : ''}`} />
+                <span>Refresh Shift Matches</span>
+              </button>
+            </div>
+
+            {/* Shift Form */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div>
+                <label className="block text-[11px] font-bold text-slate-400 mb-1">Home Origin Landmark</label>
+                <input
+                  type="text"
+                  value={shiftRoutine.home}
+                  onChange={(e) => setShiftRoutine({ ...shiftRoutine, home: e.target.value })}
+                  placeholder="e.g. Tambaram / Vadapalani"
+                  className="w-full bg-slate-900 border border-slate-700 text-white text-xs rounded-xl p-2.5 focus:border-cyan-500 focus:outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-slate-400 mb-1">Office / Tech Park Destination</label>
+                <input
+                  type="text"
+                  value={shiftRoutine.work}
+                  onChange={(e) => setShiftRoutine({ ...shiftRoutine, work: e.target.value })}
+                  placeholder="e.g. DLF Cybercity / OMR Tidel"
+                  className="w-full bg-slate-900 border border-slate-700 text-white text-xs rounded-xl p-2.5 focus:border-cyan-500 focus:outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-slate-400 mb-1">Morning Shift Timing</label>
+                <input
+                  type="time"
+                  value={shiftRoutine.time}
+                  onChange={(e) => setShiftRoutine({ ...shiftRoutine, time: e.target.value })}
+                  className="w-full bg-slate-900 border border-slate-700 text-white text-xs rounded-xl p-2.5 focus:border-cyan-500 focus:outline-none"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Matches List */}
+          <div className="space-y-3">
+            <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+              Recommended Daily Corridor Co-Commuters ({autoPoolMatches.length})
+            </h4>
+
+            {autoPoolMatches.length === 0 ? (
+              <div className="p-8 rounded-3xl glass-panel text-center text-xs text-slate-400 border border-slate-800">
+                No active recurring commuters found along this route yet. Try updating your shift landmarks.
+              </div>
+            ) : (
+              autoPoolMatches.map((m) => (
+                <div key={m.id} className="p-4 rounded-2xl glass-panel border border-slate-800 hover:border-cyan-500/40 transition-all flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-bold text-white font-outfit">{m.from_location} ➔ {m.to_location}</span>
+                      <span className="px-2 py-0.5 rounded-md bg-cyan-500/20 text-cyan-300 text-[10px] font-bold font-mono">
+                        {m.match_score || 90}% Match
+                      </span>
+                    </div>
+                    <div className="text-xs text-slate-400">
+                      Rider: <strong className="text-slate-200">{m.rider_name || 'Verified Rider'}</strong> • 🕒 {m.departure_time} • ₹{m.cost_per_person} / seat
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={() => {
+                      if (window.confirm(`Request daily shift commute with ${m.rider_name || 'Rider'}?`)) {
+                        rideAPI.joinRide(m.id, { pickup_location: m.from_location, message: 'Hi! Let us share our daily office commute regularly.' });
+                        alert('Join request sent to daily shift rider!');
+                      }
+                    }}
+                    className="px-4 py-2 rounded-xl bg-gradient-to-r from-cyan-600 to-teal-500 text-white font-bold text-xs shadow-md hover:brightness-110"
+                  >
+                    Connect Shift Partner ➔
+                  </button>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Tab 5: Tech Park Green Leaderboard */}
+      {activeTab === 'leaderboard' && (
+        <div className="space-y-4">
+          <div className="p-6 rounded-3xl glass-panel border border-amber-500/30 bg-amber-950/20 space-y-2">
+            <h3 className="text-lg font-extrabold text-white font-outfit flex items-center gap-2">
+              <span>🏆 Chennai Tech Park Green Commuter Leaderboard</span>
+            </h3>
+            <p className="text-xs text-slate-300">
+              Ranking corporate technology corridors based on cumulative $CO_2$ prevented and shared commute adoption.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {leaderboard.map((item, idx) => (
+              <div key={item.hub_id || idx} className="p-5 rounded-3xl glass-panel border border-slate-800 space-y-3">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <span className="text-xs text-amber-400 font-bold block">{item.badge}</span>
+                    <h4 className="text-base font-extrabold text-white font-outfit mt-0.5">{item.name}</h4>
+                    <span className="text-[11px] text-slate-400">{item.corridor}</span>
+                  </div>
+
+                  <span className="w-8 h-8 rounded-full bg-slate-800 text-white font-extrabold flex items-center justify-center text-sm border border-slate-700">
+                    #{idx + 1}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-800 text-xs">
+                  <div>
+                    <span className="text-[10px] text-slate-500 uppercase block">CO₂ Prevented</span>
+                    <span className="text-emerald-400 font-bold font-mono">{item.co2_saved_kg} kg</span>
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-slate-500 uppercase block">Petrol Saved</span>
+                    <span className="text-teal-300 font-bold font-mono">₹{item.petrol_saved_inr.toLocaleString('en-IN')}</span>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* RATING & COMPLIMENT MODAL */}
+      {rateModal.open && (
+        <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-md">
+          <div className="glass-modal max-w-md w-full rounded-3xl p-6 border border-slate-700 shadow-2xl space-y-4">
+            <div className="flex items-center justify-between pb-2 border-b border-slate-800">
+              <h4 className="text-sm font-bold text-white font-outfit">Rate Commuter ({rateModal.name})</h4>
+              <button onClick={() => setRateModal({ open: false, requestId: null, name: '', rating: 5, feedback: '', badges: [] })} className="text-slate-400 hover:text-white font-bold">✕</button>
+            </div>
+
+            {/* Star Rating */}
+            <div className="flex items-center justify-center gap-2 py-2">
+              {[1, 2, 3, 4, 5].map((star) => (
+                <button
+                  key={star}
+                  type="button"
+                  onClick={() => setRateModal((prev) => ({ ...prev, rating: star }))}
+                  className="text-2xl hover:scale-125 transition-transform"
+                >
+                  {star <= rateModal.rating ? '⭐' : '☆'}
+                </button>
+              ))}
+            </div>
+
+            {/* Compliment Badges */}
+            <div className="space-y-2">
+              <label className="block text-xs font-bold text-slate-300">Award Safety & Courtesy Badges:</label>
+              <div className="grid grid-cols-2 gap-2 text-xs">
+                {[
+                  { id: 'helmet_provided', label: '⛑️ Clean ISI Helmet' },
+                  { id: 'punctual', label: '⏰ Punctual & On Time' },
+                  { id: 'safe_rider', label: '🏍️ Smooth & Safe Rider' },
+                  { id: 'friendly', label: '🤝 Courteous & Friendly' }
+                ].map((b) => {
+                  const isSelected = rateModal.badges.includes(b.id);
+                  return (
+                    <button
+                      key={b.id}
+                      type="button"
+                      onClick={() => {
+                        setRateModal((prev) => ({
+                          ...prev,
+                          badges: isSelected ? prev.badges.filter(x => x !== b.id) : [...prev.badges, b.id]
+                        }));
+                      }}
+                      className={`p-2 rounded-xl text-left border text-[11px] font-bold transition-all ${
+                        isSelected ? 'bg-emerald-500/20 border-emerald-500 text-emerald-300' : 'bg-slate-900 border-slate-800 text-slate-400'
+                      }`}
+                    >
+                      {b.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <textarea
+              rows={2}
+              value={rateModal.feedback}
+              onChange={(e) => setRateModal((prev) => ({ ...prev, feedback: e.target.value }))}
+              placeholder="Leave a short compliment note..."
+              className="w-full bg-slate-900 border border-slate-700 text-white rounded-xl p-3 text-xs focus:outline-none focus:border-amber-400"
+            />
+
+            <button
+              onClick={handleSubmitRating}
+              className="w-full py-3 bg-gradient-to-r from-amber-500 to-emerald-500 text-slate-950 font-extrabold text-xs rounded-xl shadow-lg hover:brightness-110"
+            >
+              Submit Rating & Badges
+            </button>
+          </div>
         </div>
       )}
 

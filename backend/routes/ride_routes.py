@@ -470,6 +470,57 @@ class ReverseGeocode(Resource):
         except Exception as e:
             return {'success': False, 'error': f'Failed to reverse geocode: {str(e)}'}, 500
 
+@ride_ns.route('/requests/<int:request_id>/rate')
+class RateCommute(Resource):
+    @ride_ns.doc('rate_commute', security='Bearer')
+    @ride_ns.response(200, '✅ Rating submitted successfully')
+    @jwt_required()
+    def post(self, request_id):
+        """Submit post-ride rating and compliment badges for commuter"""
+        user_id = int(get_jwt_identity())
+        data = request.get_json() or {}
+        rating = float(data.get('rating', 5.0))
+        feedback = data.get('feedback', '')
+        badges = data.get('badges', [])
+
+        result = RideService.rate_commute(request_id, user_id, rating, feedback, badges)
+        if result.get('success'):
+            return result, 200
+        return result, 400
+
+@ride_ns.route('/auto-pool-match')
+class AutoPoolMatch(Resource):
+    @ride_ns.doc('auto_pool_match', security='Bearer')
+    @ride_ns.response(200, '✅ Shift auto-pool matches retrieved successfully')
+    @jwt_required(optional=True)
+    def post(self):
+        """AI Daily Shift Auto-Pool Matcher for recurring office commuters"""
+        user_id = None
+        try:
+            identity = get_jwt_identity()
+            if identity:
+                user_id = int(identity)
+        except Exception:
+            pass
+
+        data = request.get_json() or {}
+        home_loc = data.get('home_location', '')
+        work_loc = data.get('work_location', '')
+        shift_time = data.get('shift_time', '08:30')
+        days = data.get('days', ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'])
+
+        result = RideService.get_auto_pool_matches(user_id, home_loc, work_loc, shift_time, days)
+        return result, 200
+
+@ride_ns.route('/green-leaderboard')
+class GreenLeaderboard(Resource):
+    @ride_ns.doc('green_leaderboard')
+    @ride_ns.response(200, '✅ Green leaderboard retrieved successfully')
+    def get(self):
+        """Tech Park Green Commute & Sustainability Leaderboard across Chennai SEZs"""
+        result = RideService.get_green_leaderboard()
+        return result, 200
+
 # Configure JWT security for Swagger
 ride_ns.authorizations = {
     'Bearer': {

@@ -45,6 +45,9 @@ export const rideAPI = {
   getPopularRoutes: () => api.get('/api/rides/popular-routes'),
   getMyRequests: () => api.get('/api/rides/my-requests'),
   verifyRideOtp: (requestId, otp) => api.post(`/api/rides/requests/${requestId}/verify-otp`, { otp }),
+  rateRide: (requestId, data) => api.post(`/api/rides/requests/${requestId}/rate`, data),
+  getAutoPoolMatches: (routine) => api.post('/api/rides/auto-pool-match', routine),
+  getGreenLeaderboard: () => api.get('/api/rides/green-leaderboard'),
 };
 
 // Bike API Methods

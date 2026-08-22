@@ -13,6 +13,7 @@ user_registration_model = auth_ns.model('UserRegistration', {
     'name': fields.String(required=True, description='Full name', example='Ravi Kumar'),
     'phone': fields.String(required=True, description='Phone number with country code', example='+919876543210'),
     'email': fields.String(description='Email address (optional)', example='ravi@gmail.com'),
+    'gender': fields.String(description='Gender (female/male/other/prefer_not_to_say)', example='female'),
     'password': fields.String(required=True, description='Password (min 8 chars, uppercase, lowercase, digit, special char)', example='SecurePass123!'),
     'work_location': fields.String(required=True, description='Work location in Chennai', example='Sholinganallur'),
     'home_location': fields.String(required=True, description='Home location in Chennai', example='Tambaram')
@@ -25,6 +26,7 @@ user_login_model = auth_ns.model('UserLogin', {
 
 user_profile_update_model = auth_ns.model('UserProfileUpdate', {
     'name': fields.String(description='Full name'),
+    'gender': fields.String(description='Gender'),
     'work_location': fields.String(description='Work location'),
     'home_location': fields.String(description='Home location'),
     'preferred_departure_time': fields.String(description='Preferred departure time (HH:MM)', example='08:30'),

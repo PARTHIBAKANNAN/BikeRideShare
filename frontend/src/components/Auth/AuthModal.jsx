@@ -282,6 +282,28 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }) {
                 </div>
               </div>
 
+              {/* Gender Selection for Pink Ride Mode */}
+              <div>
+                <label className="block text-xs font-bold text-slate-300 mb-1">
+                  Gender <span className="text-pink-400 font-medium">(For Women-Only Pink Rides)</span>
+                </label>
+                <select
+                  value={regForm.gender || 'prefer_not_to_say'}
+                  onChange={(e) => setRegForm({ ...regForm, gender: e.target.value })}
+                  className="w-full bg-slate-900/80 border border-slate-700 text-white text-xs rounded-xl p-2.5 focus:border-pink-500 focus:outline-none"
+                >
+                  <option value="female">Female 🌸 (Recommend Women-Only Pink Ride Mode)</option>
+                  <option value="male">Male</option>
+                  <option value="other">Other</option>
+                  <option value="prefer_not_to_say">Prefer not to say</option>
+                </select>
+                {regForm.gender === 'female' && (
+                  <p className="text-[11px] text-pink-300/90 mt-1 flex items-center gap-1">
+                    <span>🌸</span> Women-Only Pink Ride mode enabled! You can offer and book female-only rides.
+                  </p>
+                )}
+              </div>
+
               <button
                 type="submit"
                 disabled={loading}

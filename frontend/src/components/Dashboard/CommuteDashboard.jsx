@@ -24,6 +24,10 @@ export default function CommuteDashboard({ currentUser, onOpenPostRide }) {
   // Leaderboard State
   const [leaderboard, setLeaderboard] = useState([]);
 
+  // 3-Tap SOS State
+  const [sosCount, setSosCount] = useState(0);
+  const [sosTimer, setSosTimer] = useState(null);
+
   // Rating Modal State
   const [rateModal, setRateModal] = useState({
     open: false,
@@ -34,9 +38,56 @@ export default function CommuteDashboard({ currentUser, onOpenPostRide }) {
     badges: ['helmet_provided']
   });
 
+  // Incident Report Modal State
+  const [reportModal, setReportModal] = useState({
+    open: false,
+    rideId: null,
+    reportedUserId: null,
+    reportedName: '',
+    bikeId: null,
+    reason: 'Rash Driving / Traffic Violation',
+    details: ''
+  });
+
   useEffect(() => {
     fetchDashboardData();
   }, []);
+
+  const handleSosClick = () => {
+    const nextCount = sosCount + 1;
+    setSosCount(nextCount);
+    if (sosTimer) clearTimeout(sosTimer);
+
+    if (nextCount >= 3) {
+      setSosCount(0);
+      alert('🚨 EMERGENCY SOS ACTIVATED! Connecting directly to Chennai Police Helpline 112...');
+      window.location.href = 'tel:112';
+    } else {
+      const timer = setTimeout(() => {
+        setSosCount(0);
+      }, 3500);
+      setSosTimer(timer);
+    }
+  };
+
+  const handleSubmitReport = async (e) => {
+    e.preventDefault();
+    try {
+      const res = await rideAPI.reportIncident({
+        ride_id: reportModal.rideId,
+        reported_user_id: reportModal.reportedUserId,
+        bike_id: reportModal.bikeId,
+        reason: reportModal.reason,
+        details: reportModal.details
+      });
+      if (res.data && res.data.success) {
+        alert('Incident report submitted to Admin. Our safety team will review and take necessary actions.');
+        setReportModal({ open: false, rideId: null, reportedUserId: null, reportedName: '', bikeId: null, reason: 'Rash Driving / Traffic Violation', details: '' });
+      }
+    } catch (err) {
+      alert(err.response?.data?.error || 'Failed to submit report.');
+    }
+  };
 
   const fetchDashboardData = async () => {
     setLoading(true);
@@ -240,11 +291,105 @@ export default function CommuteDashboard({ currentUser, onOpenPostRide }) {
         );
       })()}
 
+      {/* PINNED ACTIVE COMMUTE BOOKING TRACKER */}
+      {(() => {
+        const activeBooking = myBookings.find(b => b.status === 'accepted' || b.status === 'active');
+        if (!activeBooking) return null;
+        
+        return (
+          <div className="p-5 rounded-3xl bg-gradient-to-r from-emerald-950/40 via-slate-900 to-slate-950 border-2 border-emerald-500/50 shadow-xl space-y-4">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-3 border-b border-slate-800">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 flex items-center justify-center font-bold">
+                  <Bike className="w-5 h-5" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-sm font-bold text-white font-outfit">Active Commute in Progress</span>
+                    <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 text-[10px] font-bold border border-emerald-500/30 flex items-center gap-1">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping"></span> Confirmed Ride
+                    </span>
+                    {activeBooking.is_for_friend && (
+                      <span className="px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 text-[10px] font-bold border border-cyan-500/30">
+                        👥 For Friend: {activeBooking.friend_name}
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    Pickup Point: <strong className="text-slate-200">{activeBooking.pickup_location || activeBooking.from_location || 'Confirmed Stop'}</strong>
+                  </p>
+                </div>
+              </div>
+
+              {/* Boarding Handshake OTP */}
+              <div className="p-2.5 px-4 rounded-2xl bg-emerald-950/80 border border-emerald-500/40 flex items-center gap-3">
+                <div>
+                  <span className="text-[10px] uppercase font-bold text-emerald-300 block">Boarding Handshake OTP</span>
+                  <span className="text-xl font-extrabold text-emerald-400 font-mono tracking-widest">
+                    {activeBooking.start_otp || '7781'}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
+              {/* 3-Tap Police SOS Trigger */}
+              <button
+                onClick={handleSosClick}
+                className={`px-4 py-2.5 rounded-xl text-white text-xs font-bold flex items-center gap-2 transition-all shadow-md ${
+                  sosCount > 0
+                    ? 'bg-rose-600 border-2 border-white animate-bounce'
+                    : 'bg-rose-600/90 hover:bg-rose-600 border border-rose-500'
+                }`}
+              >
+                <span className="text-sm">🚨</span>
+                <span>
+                  {sosCount === 0 && '3-Tap Police SOS (112)'}
+                  {sosCount === 1 && 'SOS: 1/3 (Tap 2 more times to call 112)'}
+                  {sosCount === 2 && 'SOS: 2/3 (Tap 1 more time to call 112!)'}
+                </span>
+              </button>
+
+              <div className="flex items-center gap-2 flex-wrap">
+                {/* WhatsApp Share Booking */}
+                <a
+                  href={`https://api.whatsapp.com/send?text=${encodeURIComponent(
+                    `Hi ${activeBooking.friend_name || 'there'}! Here are the details for your Chennai SmartRide bike pool:\nPickup Point: ${activeBooking.pickup_location || 'Confirmed Landmark'}\nBoarding 4-Digit OTP: ${activeBooking.start_otp || '7781'}\nEmergency Police: 112\nTrack trip on Chennai Bike Pool!`
+                  )}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="px-3.5 py-2 rounded-xl bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 border border-emerald-500/30 text-xs font-bold flex items-center gap-1.5 transition-colors"
+                >
+                  <MessageSquare className="w-3.5 h-3.5" />
+                  <span>{activeBooking.is_for_friend ? 'Share to Friend on WhatsApp' : 'Share Booking on WhatsApp'}</span>
+                </a>
+
+                {/* Report Issue Button */}
+                <button
+                  onClick={() => setReportModal({
+                    open: true,
+                    rideId: activeBooking.ride_id,
+                    reportedUserId: null,
+                    reportedName: 'Rider',
+                    bikeId: null,
+                    reason: 'Rash Driving / Traffic Violation',
+                    details: ''
+                  })}
+                  className="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold border border-slate-700 flex items-center gap-1.5 transition-colors"
+                >
+                  <span>🚨 Report Issue</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
       {/* Tabs */}
-      <div className="flex items-center gap-2 border-b border-slate-800 pb-2">
+      <div className="flex items-center gap-2 border-b border-slate-800 pb-2 overflow-x-auto">
         <button
           onClick={() => setActiveTab('requests')}
-          className={`px-4 py-2 rounded-xl text-xs font-bold transition-all relative ${
+          className={`px-4 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap relative ${
             activeTab === 'requests'
               ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
               : 'text-slate-400 hover:text-white'
@@ -260,7 +405,7 @@ export default function CommuteDashboard({ currentUser, onOpenPostRide }) {
 
         <button
           onClick={() => setActiveTab('offered')}
-          className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+          className={`px-4 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
             activeTab === 'offered'
               ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
               : 'text-slate-400 hover:text-white'
@@ -271,7 +416,7 @@ export default function CommuteDashboard({ currentUser, onOpenPostRide }) {
 
         <button
           onClick={() => setActiveTab('booked')}
-          className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+          className={`px-4 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
             activeTab === 'booked'
               ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
               : 'text-slate-400 hover:text-white'
@@ -281,11 +426,22 @@ export default function CommuteDashboard({ currentUser, onOpenPostRide }) {
         </button>
 
         <button
+          onClick={() => setActiveTab('history')}
+          className={`px-4 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
+            activeTab === 'history'
+              ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+              : 'text-slate-400 hover:text-white'
+          }`}
+        >
+          📜 Booking History
+        </button>
+
+        <button
           onClick={() => {
             setActiveTab('autopool');
             handleFetchAutoPool();
           }}
-          className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
+          className={`px-4 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap flex items-center gap-1.5 ${
             activeTab === 'autopool'
               ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 font-extrabold'
               : 'text-slate-400 hover:text-white'
@@ -299,7 +455,7 @@ export default function CommuteDashboard({ currentUser, onOpenPostRide }) {
             setActiveTab('leaderboard');
             handleFetchLeaderboard();
           }}
-          className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
+          className={`px-4 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap flex items-center gap-1.5 ${
             activeTab === 'leaderboard'
               ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30 font-extrabold'
               : 'text-slate-400 hover:text-white'
@@ -502,6 +658,69 @@ export default function CommuteDashboard({ currentUser, onOpenPostRide }) {
                 </div>
               );
             })
+          )}
+        </div>
+      )}
+
+      {/* Tab: Booking History & Past Trips */}
+      {activeTab === 'history' && (
+        <div className="space-y-3">
+          {myBookings.length === 0 ? (
+            <div className="p-10 rounded-3xl glass-panel text-center space-y-2 border border-slate-800">
+              <Clock className="w-10 h-10 text-slate-500 mx-auto" />
+              <h4 className="text-sm font-bold text-white">No Past Commute Bookings</h4>
+              <p className="text-xs text-slate-400">Your completed and archived bike pool trips will be safely logged here.</p>
+            </div>
+          ) : (
+            myBookings.map((b) => (
+              <div key={b.id} className="p-4 rounded-2xl glass-panel border border-slate-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-xs font-bold text-white">
+                      Pickup: {b.pickup_location || 'Designated Landmark'}
+                    </span>
+                    <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
+                      b.status === 'completed' || b.status === 'accepted' ? 'bg-emerald-500/20 text-emerald-300' :
+                      b.status === 'cancelled' || b.status === 'rejected' ? 'bg-rose-500/20 text-rose-300' :
+                      'bg-slate-800 text-slate-300'
+                    }`}>
+                      {b.status?.toUpperCase()}
+                    </span>
+                    {b.is_for_friend && (
+                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 font-bold">
+                        👥 For Friend: {b.friend_name}
+                      </span>
+                    )}
+                  </div>
+                  <div className="text-[11px] text-slate-400">
+                    Rider: <strong className="text-slate-200">{b.rider_name || 'Verified Rider'}</strong> • Date: {b.created_at ? new Date(b.created_at).toLocaleDateString() : 'Recent'}
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setRateModal({ open: true, requestId: b.id, name: b.rider_name || 'Rider', rating: 5, feedback: '', badges: ['helmet_provided'] })}
+                    className="px-3 py-1.5 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/30 text-xs font-bold transition-colors"
+                  >
+                    ⭐ Rate Rider
+                  </button>
+                  <button
+                    onClick={() => setReportModal({
+                      open: true,
+                      rideId: b.ride_id,
+                      reportedUserId: null,
+                      reportedName: b.rider_name || 'Rider',
+                      bikeId: null,
+                      reason: 'Rash Driving / Traffic Violation',
+                      details: ''
+                    })}
+                    className="px-3 py-1.5 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 border border-rose-500/30 text-xs font-bold transition-colors"
+                  >
+                    🚨 Report
+                  </button>
+                </div>
+              </div>
+            ))
           )}
         </div>
       )}
@@ -722,6 +941,76 @@ export default function CommuteDashboard({ currentUser, onOpenPostRide }) {
             >
               Submit Rating & Badges
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* INCIDENT REPORTING MODAL */}
+      {reportModal.open && (
+        <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-md">
+          <div className="glass-modal max-w-md w-full rounded-3xl p-6 border border-rose-500/40 shadow-2xl space-y-4">
+            <div className="flex items-center justify-between pb-2 border-b border-slate-800">
+              <div className="flex items-center gap-2 text-rose-400 font-bold font-outfit text-sm">
+                <span>🚨</span>
+                <span>Report Safety / Conduct Issue</span>
+              </div>
+              <button
+                onClick={() => setReportModal({ open: false, rideId: null, reportedUserId: null, reportedName: '', bikeId: null, reason: '', details: '' })}
+                className="text-slate-400 hover:text-white font-bold"
+              >
+                ✕
+              </button>
+            </div>
+
+            <p className="text-xs text-slate-300">
+              Reports are sent directly to the Admin Moderation Queue for review, blacklisting, or police follow-up.
+            </p>
+
+            <form onSubmit={handleSubmitReport} className="space-y-3 text-xs">
+              <div>
+                <label className="block text-[11px] font-bold text-slate-300 mb-1">Incident Category</label>
+                <select
+                  value={reportModal.reason}
+                  onChange={(e) => setReportModal({ ...reportModal, reason: e.target.value })}
+                  className="w-full bg-slate-900 border border-slate-700 text-white rounded-xl p-2.5 focus:border-rose-500 focus:outline-none text-xs"
+                >
+                  <option value="Rash Driving / Traffic Violation">🏍️ Rash Driving / Red Light Jump</option>
+                  <option value="No Helmet Provided">⛑️ No Clean Helmet Provided</option>
+                  <option value="Vehicle Mismatch / Unsafe Bike">⚠️ Vehicle Plate / Model Mismatch</option>
+                  <option value="Inappropriate Behavior / Harassment">🛑 Harassment / Inappropriate Conduct</option>
+                  <option value="Demanded Extra Cash / Overcharging">💰 Overcharging / Extra Cash Demanded</option>
+                  <option value="Other Safety Concern">🛡️ Other Safety Issue</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-slate-300 mb-1">Details / Description of Event</label>
+                <textarea
+                  rows={3}
+                  required
+                  value={reportModal.details}
+                  onChange={(e) => setReportModal({ ...reportModal, details: e.target.value })}
+                  placeholder="Describe what happened, junction/location, and any relevant facts..."
+                  className="w-full bg-slate-900 border border-slate-700 text-white rounded-xl p-3 focus:border-rose-500 focus:outline-none text-xs"
+                />
+              </div>
+
+              <div className="pt-2 flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setReportModal({ open: false, rideId: null, reportedUserId: null, reportedName: '', bikeId: null, reason: '', details: '' })}
+                  className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs shadow-md transition-colors"
+                >
+                  Submit Report to Admin
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

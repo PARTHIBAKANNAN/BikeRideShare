@@ -489,4 +489,78 @@ class PlatformStats(Resource):
             return {
                 'success': False,
                 'error': f'Failed to get platform stats: {str(e)}'
-            }, 500 
+            }, 500
+
+@admin_ns.route('/incident-reports')
+class AdminIncidentReports(Resource):
+    @admin_ns.doc('get_admin_incident_reports', security='Bearer')
+    @jwt_required()
+    def get(self):
+        """Get all commuter/rider incident reports"""
+        current_user_id = get_jwt_identity()
+        if not AdminService.verify_admin_access(current_user_id):
+            return {'success': False, 'error': 'Admin access required'}, 403
+        status = request.args.get('status')
+        return AdminService.get_incident_reports(status), 200
+
+@admin_ns.route('/incident-reports/<int:report_id>/action')
+class AdminIncidentReportAction(Resource):
+    @admin_ns.doc('action_admin_incident_report', security='Bearer')
+    @jwt_required()
+    def post(self, report_id):
+        """Take moderation action on an incident report"""
+        current_user_id = get_jwt_identity()
+        if not AdminService.verify_admin_access(current_user_id):
+            return {'success': False, 'error': 'Admin access required'}, 403
+        data = request.get_json() or {}
+        action = data.get('action', 'action_taken')
+        notes = data.get('notes', '')
+        return AdminService.action_incident_report(report_id, action, notes), 200
+
+@admin_ns.route('/bikes-directory')
+class AdminBikesDirectory(Resource):
+    @admin_ns.doc('get_all_bikes_directory', security='Bearer')
+    @jwt_required()
+    def get(self):
+        """Get all registered vehicles and owners across the platform"""
+        current_user_id = get_jwt_identity()
+        if not AdminService.verify_admin_access(current_user_id):
+            return {'success': False, 'error': 'Admin access required'}, 403
+        return AdminService.get_all_platform_bikes(), 200
+
+@admin_ns.route('/users/<int:user_id>/blacklist')
+class AdminBlacklistUser(Resource):
+    @admin_ns.doc('blacklist_user', security='Bearer')
+    @jwt_required()
+    def post(self, user_id):
+        """Blacklist and suspend a user account"""
+        current_user_id = get_jwt_identity()
+        if not AdminService.verify_admin_access(current_user_id):
+            return {'success': False, 'error': 'Admin access required'}, 403
+        data = request.get_json() or {}
+        reason = data.get('reason', 'Policy violation')
+        return AdminService.blacklist_user(user_id, reason), 200
+
+@admin_ns.route('/users/<int:user_id>/unblacklist')
+class AdminUnblacklistUser(Resource):
+    @admin_ns.doc('unblacklist_user', security='Bearer')
+    @jwt_required()
+    def post(self, user_id):
+        """Reinstate a suspended user account"""
+        current_user_id = get_jwt_identity()
+        if not AdminService.verify_admin_access(current_user_id):
+            return {'success': False, 'error': 'Admin access required'}, 403
+        return AdminService.unblacklist_user(user_id), 200
+
+@admin_ns.route('/bikes/<int:bike_id>/blacklist')
+class AdminBlacklistBike(Resource):
+    @admin_ns.doc('blacklist_bike', security='Bearer')
+    @jwt_required()
+    def post(self, bike_id):
+        """Blacklist and ban a vehicle plate number"""
+        current_user_id = get_jwt_identity()
+        if not AdminService.verify_admin_access(current_user_id):
+            return {'success': False, 'error': 'Admin access required'}, 403
+        data = request.get_json() or {}
+        reason = data.get('reason', 'Unsafe vehicle or document fraud')
+        return AdminService.blacklist_bike(bike_id, reason), 200 

@@ -177,12 +177,16 @@ class AuthService:
         # Create new user
         try:
             hashed_password = AuthService.hash_password(password)
+            gender = user_data.get('gender', 'prefer_not_to_say').strip().lower()
+            if gender not in ['female', 'male', 'other', 'prefer_not_to_say']:
+                gender = 'prefer_not_to_say'
             
             new_user = User(
                 name=name,
                 phone=formatted_phone,
                 email=normalized_email,
                 password_hash=hashed_password,
+                gender=gender,
                 work_location=work_location,
                 home_location=home_location
             )
@@ -277,6 +281,13 @@ class AuthService:
             return {
                 'success': False,
                 'error': 'User not found'
+            }
+        
+        # Check if blacklisted
+        if getattr(user, 'is_blacklisted', False):
+            return {
+                'success': False,
+                'error': f'Account Suspended: {user.blacklist_reason or "Your account has been suspended by platform administration."}'
             }
         
         if not user.is_active:

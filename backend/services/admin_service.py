@@ -598,4 +598,152 @@ class AdminService:
             return {
                 'success': False,
                 'error': f'Failed to get user details: {str(e)}'
-            } 
+            }
+
+    @staticmethod
+    def get_incident_reports(status: str = None) -> dict:
+        """Get all commuter/rider incident reports for admin review"""
+        from models.models import IncidentReport
+        try:
+            query = IncidentReport.query
+            if status:
+                query = query.filter_by(status=status)
+            reports = query.order_by(IncidentReport.created_at.desc()).all()
+            return {
+                'success': True,
+                'reports': [r.to_dict() for r in reports],
+                'total_reports': len(reports),
+                'pending_count': len([r for r in reports if r.status == 'pending'])
+            }
+        except Exception as e:
+            return {'success': False, 'error': f'Failed to get incident reports: {str(e)}'}
+
+    @staticmethod
+    def action_incident_report(report_id: int, action: str, notes: str = None) -> dict:
+        """Take moderation action on an incident report"""
+        from models.models import db, IncidentReport
+        try:
+            report = IncidentReport.query.get(report_id)
+            if not report:
+                return {'success': False, 'error': 'Incident report not found'}
+            
+            report.status = 'action_taken' if action != 'dismissed' else 'dismissed'
+            report.admin_action = action
+            report.admin_notes = notes
+            report.resolved_at = datetime.utcnow()
+            
+            # If action is user_blacklisted or bike_blacklisted, trigger blacklist
+            if action == 'user_blacklisted' and report.reported_user_id:
+                AdminService.blacklist_user(report.reported_user_id, f"Incident report #{report.id}: {report.reason}")
+            elif action == 'bike_blacklisted' and report.bike_id:
+                AdminService.blacklist_bike(report.bike_id, f"Incident report #{report.id}: {report.reason}")
+                
+            db.session.commit()
+            return {
+                'success': True,
+                'message': f'Report #{report.id} updated with action: {action}',
+                'report': report.to_dict()
+            }
+        except Exception as e:
+            db.session.rollback()
+            return {'success': False, 'error': f'Failed to action incident report: {str(e)}'}
+
+    @staticmethod
+    def blacklist_user(user_id: int, reason: str = 'Policy violation') -> dict:
+        """Blacklist and suspend a user account immediately"""
+        from models.models import db, User, Ride
+        try:
+            user = User.query.get(user_id)
+            if not user:
+                return {'success': False, 'error': 'User not found'}
+            
+            user.is_blacklisted = True
+            user.blacklist_reason = reason
+            user.blacklisted_at = datetime.utcnow()
+            user.is_active = False
+            
+            # Cancel any active rides offered by this user
+            Ride.query.filter_by(rider_id=user_id, status='active').update({'status': 'cancelled'})
+            
+            db.session.commit()
+            return {
+                'success': True,
+                'message': f'User {user.name} ({user.phone}) has been blacklisted and suspended.',
+                'user': user.to_dict()
+            }
+        except Exception as e:
+            db.session.rollback()
+            return {'success': False, 'error': f'Failed to blacklist user: {str(e)}'}
+
+    @staticmethod
+    def unblacklist_user(user_id: int) -> dict:
+        """Reinstate a blacklisted user"""
+        from models.models import db, User
+        try:
+            user = User.query.get(user_id)
+            if not user:
+                return {'success': False, 'error': 'User not found'}
+            
+            user.is_blacklisted = False
+            user.blacklist_reason = None
+            user.is_active = True
+            
+            db.session.commit()
+            return {
+                'success': True,
+                'message': f'User {user.name} has been reinstated.',
+                'user': user.to_dict()
+            }
+        except Exception as e:
+            db.session.rollback()
+            return {'success': False, 'error': f'Failed to reinstate user: {str(e)}'}
+
+    @staticmethod
+    def get_all_platform_bikes() -> dict:
+        """Get all registered bikes with owner information for Admin directory"""
+        from models.models import Bike, User
+        try:
+            bikes = Bike.query.order_by(Bike.created_at.desc()).all()
+            bike_list = []
+            for b in bikes:
+                b_dict = b.to_dict()
+                if b.owner:
+                    b_dict['owner_name'] = b.owner.name
+                    b_dict['owner_phone'] = b.owner.phone
+                    b_dict['owner_email'] = b.owner.email
+                    b_dict['owner_blacklisted'] = getattr(b.owner, 'is_blacklisted', False)
+                bike_list.append(b_dict)
+            return {
+                'success': True,
+                'bikes': bike_list,
+                'total_bikes': len(bike_list)
+            }
+        except Exception as e:
+            return {'success': False, 'error': f'Failed to get bikes directory: {str(e)}'}
+
+    @staticmethod
+    def blacklist_bike(bike_id: int, reason: str = 'Policy violation / Unsafe vehicle') -> dict:
+        """Blacklist a vehicle plate number"""
+        from models.models import db, Bike, Ride
+        try:
+            bike = Bike.query.get(bike_id)
+            if not bike:
+                return {'success': False, 'error': 'Bike not found'}
+            
+            bike.is_active = False
+            bike.is_verified = False
+            bike.verification_status = 'rejected'
+            bike.rejection_reason = f"Vehicle Blacklisted: {reason}"
+            
+            # Cancel active rides with this bike
+            Ride.query.filter_by(bike_id=bike_id, status='active').update({'status': 'cancelled'})
+            
+            db.session.commit()
+            return {
+                'success': True,
+                'message': f'Vehicle {bike.bike_number} has been blacklisted and deactivated.',
+                'bike': bike.to_dict()
+            }
+        except Exception as e:
+            db.session.rollback()
+            return {'success': False, 'error': f'Failed to blacklist vehicle: {str(e)}'} 

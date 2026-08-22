@@ -521,6 +521,20 @@ class GreenLeaderboard(Resource):
         result = RideService.get_green_leaderboard()
         return result, 200
 
+@ride_ns.route('/report')
+class IncidentReportResource(Resource):
+    @ride_ns.doc('report_incident', security='Bearer')
+    @ride_ns.response(200, '✅ Incident report submitted successfully')
+    @jwt_required()
+    def post(self):
+        """Submit incident report against a rider, commuter, or bike"""
+        user_id = int(get_jwt_identity())
+        data = request.get_json() or {}
+        result = RideService.report_incident(user_id, data)
+        if result.get('success'):
+            return result, 200
+        return result, 400
+
 # Configure JWT security for Swagger
 ride_ns.authorizations = {
     'Bearer': {

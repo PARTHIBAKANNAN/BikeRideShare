@@ -19,7 +19,8 @@ export default function PostRideModal({
     available_seats: 1,
     description: 'Daily office commute. Helmet provided.',
     is_recurring: false,
-    recurring_days: ['monday', 'tuesday', 'wednesday', 'thursday', 'friday']
+    recurring_days: ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'],
+    is_pink_ride: currentUser?.gender === 'female'
   });
 
   const [routePreview, setRoutePreview] = useState(null);
@@ -92,7 +93,8 @@ export default function PostRideModal({
         available_seats: parseInt(formData.available_seats),
         description: formData.description,
         is_recurring: formData.is_recurring,
-        recurring_days: formData.is_recurring ? formData.recurring_days : []
+        recurring_days: formData.is_recurring ? formData.recurring_days : [],
+        is_pink_ride: formData.is_pink_ride
       };
 
       const res = await rideAPI.postRide(payload);
@@ -355,7 +357,7 @@ export default function PostRideModal({
               />
             </div>
 
-            {/* Recurring & Safety Helmet Checkboxes */}
+            {/* Recurring, Pink Ride & Safety Helmet Checkboxes */}
             <div className="space-y-2 pt-1 border-t border-slate-800/80">
               <div className="flex items-center gap-2">
                 <input
@@ -370,6 +372,22 @@ export default function PostRideModal({
                   Recurring Daily Commute (Monday to Friday office pool)
                 </label>
               </div>
+
+              {currentUser?.gender === 'female' && (
+                <div className="flex items-center gap-2 p-2 rounded-xl bg-pink-950/20 border border-pink-500/30 text-xs">
+                  <input
+                    type="checkbox"
+                    id="is_pink_ride"
+                    name="is_pink_ride"
+                    checked={formData.is_pink_ride}
+                    onChange={handleChange}
+                    className="w-4 h-4 rounded text-pink-600 focus:ring-pink-500 bg-slate-900 border-slate-700"
+                  />
+                  <label htmlFor="is_pink_ride" className="text-xs font-bold text-pink-300 cursor-pointer flex items-center gap-1">
+                    🌸 Offer as Women-Only Pink Ride (Exclusively for female commuters)
+                  </label>
+                </div>
+              )}
 
               <div className="flex items-center gap-2">
                 <input

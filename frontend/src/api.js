@@ -48,6 +48,7 @@ export const rideAPI = {
   rateRide: (requestId, data) => api.post(`/api/rides/requests/${requestId}/rate`, data),
   getAutoPoolMatches: (routine) => api.post('/api/rides/auto-pool-match', routine),
   getGreenLeaderboard: () => api.get('/api/rides/green-leaderboard'),
+  reportIncident: (data) => api.post('/api/rides/report', data),
 };
 
 // Bike API Methods
@@ -82,6 +83,15 @@ export const adminAPI = {
   flagUser: (userId, reason) => api.post('/api/admin/users/flag', { user_id: userId, reason }),
   unflagUser: (userId) => api.post('/api/admin/users/unflag', { user_id: userId }),
   getAllRides: (params) => api.get('/api/admin/rides', { params }),
+  
+  // Incident Reports & Blacklisting
+  getIncidentReports: (status) => api.get('/api/admin/incident-reports', { params: { status } }),
+  actionIncidentReport: (reportId, action, notes) => 
+    api.post(`/api/admin/incident-reports/${reportId}/action`, { action, notes }),
+  getBikesDirectory: () => api.get('/api/admin/bikes-directory'),
+  blacklistUser: (userId, reason) => api.post(`/api/admin/users/${userId}/blacklist`, { reason }),
+  unblacklistUser: (userId) => api.post(`/api/admin/users/${userId}/unblacklist`),
+  blacklistBike: (bikeId, reason) => api.post(`/api/admin/bikes/${bikeId}/blacklist`, { reason }),
 };
 
 export const systemAPI = {

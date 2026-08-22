@@ -186,6 +186,13 @@ class RideService:
         if errors:
             return {'success': False, 'errors': errors}
         
+        is_pink_ride = ride_data.get('is_pink_ride', False)
+        if is_pink_ride and user.gender != 'female':
+            return {
+                'success': False,
+                'error': 'Women-Only Pink Rides can only be offered by verified female riders.'
+            }
+
         # Create new ride
         try:
             new_ride = Ride(
@@ -198,7 +205,8 @@ class RideService:
                 available_seats=available_seats,
                 cost_per_person=round(cost_per_person, 0),
                 additional_notes=description if description else None,
-                is_recurring=is_recurring
+                is_recurring=is_recurring,
+                is_pink_ride=bool(is_pink_ride)
             )
             
             if is_recurring:
@@ -255,10 +263,13 @@ class RideService:
                     Ride.departure_date >= date.today()
                 )
             ).join(User, Ride.rider_id == User.id).join(Bike, Ride.bike_id == Bike.id)
-            
             # Exclude user's own rides if user_id is provided
             if user_id:
                 base_query = base_query.filter(Ride.rider_id != user_id)
+            
+            # Pink Ride Filter
+            if search_params.get('is_pink_ride') or search_params.get('pink_ride_only'):
+                base_query = base_query.filter(Ride.is_pink_ride == True)
             
             # Apply flexible date filter for AI search (±3 days from requested date)
             if travel_date:
@@ -328,57 +339,56 @@ class RideService:
                 'seats_needed': seats_needed_val,
                 'max_cost': max_cost
             }
+
+            # If Gemini key not configured, fallback to basic search
+            if not RideService.is_gemini_configured():
+                print("⚠️ Gemini API not configured, falling back to basic search")
+                filtered_rides = [
+                    r for r in available_rides 
+                    if (not from_location or from_location.lower() in r['route']['from_location'].lower()) and
+                       (not to_location or to_location.lower() in r['route']['to_location'].lower())
+                ]
+                return {
+                    'success': True,
+                    'rides': filtered_rides,
+                    'total_rides': len(filtered_rides),
+                    'search_type': 'keyword_filtered',
+                    'ai_powered': False
+                }
             
-            # Use AI-powered intelligent matching
-            matched_rides = ai_route_matcher.find_intelligent_matches(search_request, available_rides)
-            
-            # Determine search type based on AI configuration
-            search_type = 'ai_intelligent' if ai_route_matcher.is_configured else 'basic_enhanced'
-            
-            return {
-                'success': True,
-                'rides': matched_rides,
-                'total_rides': len(matched_rides),
-                'search_criteria': {
-                    'from_location': from_location,
-                    'to_location': to_location,
-                    'travel_date': travel_date,
-                    'seats_needed': seats_needed_val,
-                    'max_cost': max_cost
-                },
-                'search_type': search_type,
-                'ai_powered': ai_route_matcher.is_configured,
-                'message': RideService._get_search_message(matched_rides, search_type, from_location, to_location)
-            }
-            
+            # Use Gemini AI for intelligent ride matching
+            try:
+                ai_results = RideService._analyze_rides_with_gemini(search_request, available_rides)
+                return {
+                    'success': True,
+                    'rides': ai_results.get('matched_rides', []),
+                    'total_rides': len(ai_results.get('matched_rides', [])),
+                    'ai_analysis': ai_results.get('analysis', ''),
+                    'search_type': 'ai_matched',
+                    'ai_powered': True
+                }
+            except Exception as e:
+                print(f"❌ AI search failed, falling back: {str(e)}")
+                # Fallback to broad location matching if AI fails
+                filtered_rides = [
+                    r for r in available_rides 
+                    if (not from_location or from_location.lower() in r['route']['from_location'].lower()) and
+                       (not to_location or to_location.lower() in r['route']['to_location'].lower())
+                ]
+                return {
+                    'success': True,
+                    'rides': filtered_rides,
+                    'total_rides': len(filtered_rides),
+                    'search_type': 'keyword_fallback',
+                    'ai_powered': False
+                }
+                
         except Exception as e:
-            return {
-                'success': False,
-                'error': f'Failed to search rides: {str(e)}'
-            }
-    
-    @staticmethod
-    def _get_search_message(matched_rides: list, search_type: str, from_location: str, to_location: str) -> str:
-        """Generate helpful search result message"""
-        
-        if not matched_rides:
-            if search_type == 'ai_intelligent':
-                return f"No suitable rides found for {from_location} to {to_location}. AI analyzed all available routes including via points and nearby options."
-            else:
-                return f"No rides found for {from_location} to {to_location}. Try expanding your search criteria or check different dates."
-        
-        if search_type == 'ai_intelligent':
-            high_score_rides = len([r for r in matched_rides if r.get('ai_match_score', 0) >= 80])
-            if high_score_rides > 0:
-                return f"Found {len(matched_rides)} intelligent matches! {high_score_rides} rides have excellent route compatibility."
-            else:
-                return f"Found {len(matched_rides)} potential matches with route analysis. Check AI recommendations for best options."
-        else:
-            return f"Found {len(matched_rides)} rides. Results enhanced with basic route analysis."
+            return {'success': False, 'error': f'Failed to search rides: {str(e)}'}
     
     @staticmethod
     def request_ride_join(user_id: int, ride_id: int, request_data: dict) -> dict:
-        """Request to join a specific ride"""
+        """Request to join a specific ride (supports booking for a friend and pink rides)"""
         from models.models import RideRequest, Ride, User
         from services.notification_service import NotificationService
         
@@ -394,6 +404,18 @@ class RideService:
             # Check if user is trying to join their own ride
             if ride.rider_id == user_id:
                 return {'success': False, 'error': 'You cannot join your own ride'}
+            
+            user = User.query.get(user_id)
+            is_for_friend = bool(request_data.get('is_for_friend', False))
+            friend_name = request_data.get('friend_name', '').strip() if is_for_friend else None
+            friend_phone = request_data.get('friend_phone', '').strip() if is_for_friend else None
+
+            # Pink Ride verification
+            if ride.is_pink_ride and user and user.gender != 'female' and not is_for_friend:
+                return {
+                    'success': False,
+                    'error': 'This is a Women-Only Pink Ride reserved for female commuters.'
+                }
             
             # Check if user has already requested to join this ride
             existing_request = RideRequest.query.filter_by(
@@ -417,6 +439,9 @@ class RideService:
                 pickup_location=request_data.get('pickup_location'),
                 message=request_data.get('message', ''),
                 seats_needed=seats_needed,
+                is_for_friend=is_for_friend,
+                friend_name=friend_name,
+                friend_phone=friend_phone,
                 status='pending'
             )
             
@@ -444,6 +469,53 @@ class RideService:
         except Exception as e:
             db.session.rollback()
             return {'success': False, 'error': f'Failed to request ride join: {str(e)}'}
+
+    @staticmethod
+    def report_incident(reporter_id: int, data: dict) -> dict:
+        """Report a commuter, rider, bike or safety violation to Admin"""
+        from models.models import db, IncidentReport, User, Ride
+        
+        try:
+            reported_user_id = data.get('reported_user_id')
+            ride_id = data.get('ride_id')
+            bike_id = data.get('bike_id')
+            report_type = data.get('report_type', 'rider')
+            reason = data.get('reason', '').strip()
+            details = data.get('details', '').strip()
+            
+            if not reason:
+                return {'success': False, 'error': 'Report reason is required'}
+            
+            # If ride_id provided, automatically resolve reported user and bike
+            if ride_id and not reported_user_id:
+                ride = Ride.query.get(ride_id)
+                if ride:
+                    if ride.rider_id != reporter_id:
+                        reported_user_id = ride.rider_id
+                        bike_id = ride.bike_id
+            
+            report = IncidentReport(
+                reporter_id=reporter_id,
+                reported_user_id=reported_user_id,
+                ride_id=ride_id,
+                bike_id=bike_id,
+                report_type=report_type,
+                reason=reason,
+                details=details,
+                status='pending'
+            )
+            
+            db.session.add(report)
+            db.session.commit()
+            
+            return {
+                'success': True,
+                'message': 'Incident report submitted. Administration will review within 24 hours.',
+                'report': report.to_dict()
+            }
+        except Exception as e:
+            db.session.rollback()
+            return {'success': False, 'error': f'Failed to submit report: {str(e)}'}
 
     @staticmethod
     def accept_ride_request(provider_id: int, ride_request_id: int) -> dict:

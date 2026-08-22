@@ -44,6 +44,11 @@ export default function RideCard({
             <div className="flex items-center gap-1.5 font-bold text-white text-sm">
               <span>{riderName}</span>
               <ShieldCheck className="w-4 h-4 text-emerald-400" title="Verified Rider & DL" />
+              {(ride.is_pink_ride || (ride.booking && ride.booking.is_pink_ride)) && (
+                <span className="px-2 py-0.5 rounded-lg bg-pink-500/20 text-pink-300 text-[10px] font-extrabold border border-pink-500/30 flex items-center gap-1">
+                  🌸 Pink Ride
+                </span>
+              )}
             </div>
             <div className="flex items-center gap-2 text-xs text-slate-400 mt-0.5">
               <span className="text-amber-400 font-semibold">⭐ {riderRating}</span>

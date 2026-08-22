@@ -202,7 +202,7 @@ export default function RideSearch({
           </div>
         </form>
 
-        {/* Quick Tech Park Hubs & Corridor Filters */}
+        {/* Quick Tech Park Hubs, Pink Rides & Corridor Filters */}
         <div className="space-y-2 pt-2 border-t border-slate-800">
           <div className="flex flex-wrap items-center gap-1.5">
             <span className="text-[11px] font-bold text-emerald-400 flex items-center gap-1 mr-1">
@@ -225,6 +225,25 @@ export default function RideSearch({
                 {hub.title}
               </button>
             ))}
+
+            {/* Pink Ride Toggle Button */}
+            <button
+              type="button"
+              onClick={() => {
+                const newVal = !searchParams.is_pink_ride;
+                const updated = { ...searchParams, is_pink_ride: newVal };
+                setSearchParams(updated);
+                fetchRides(updated);
+              }}
+              className={`px-3 py-1 rounded-xl border text-[11px] font-bold transition-all flex items-center gap-1 ml-auto ${
+                searchParams.is_pink_ride
+                  ? 'bg-pink-500/30 border-pink-500 text-pink-200 shadow-sm'
+                  : 'bg-pink-950/20 border-pink-500/30 text-pink-300 hover:bg-pink-900/30'
+              }`}
+            >
+              <span>🌸 Pink Rides (Women Only)</span>
+              {searchParams.is_pink_ride && <span>✓ Active</span>}
+            </button>
           </div>
 
           <div className="flex flex-wrap items-center gap-1.5 pt-1">

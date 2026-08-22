@@ -17,6 +17,7 @@ class User(db.Model):
     
     # Profile Information
     profile_image_url = db.Column(db.String(255), nullable=True)
+    gender = db.Column(db.String(20), default='prefer_not_to_say')  # female/male/other/prefer_not_to_say
     work_location = db.Column(db.String(100), nullable=False)
     home_location = db.Column(db.String(100), nullable=False)
     preferred_departure_time = db.Column(db.Time, nullable=True)
@@ -36,6 +37,9 @@ class User(db.Model):
     
     # User Status & Moderation
     is_active = db.Column(db.Boolean, default=True)
+    is_blacklisted = db.Column(db.Boolean, default=False)
+    blacklist_reason = db.Column(db.String(255), nullable=True)
+    blacklisted_at = db.Column(db.DateTime, nullable=True)
     is_flagged = db.Column(db.Boolean, default=False)
     flag_reason = db.Column(db.Text, nullable=True)
     flagged_by_admin = db.Column(db.Integer, nullable=True)  # Admin user ID who flagged
@@ -178,6 +182,7 @@ class Ride(db.Model):
     
     # Preferences
     preferred_gender = db.Column(db.String(10), nullable=True)  # male/female/any
+    is_pink_ride = db.Column(db.Boolean, default=False)  # Women-only commute pool
     additional_notes = db.Column(db.Text, nullable=True)
     
     # Status
@@ -240,12 +245,13 @@ class Ride(db.Model):
                 'id': self.rider.id,
                 'name': self.rider.name,
                 'phone': self.rider.phone,
+                'gender': getattr(self.rider, 'gender', 'prefer_not_to_say'),
                 'rating': self.rider.rating,
                 'total_rides_offered': self.rider.total_rides_offered,
                 'verified_status': {
                     'phone_verified': self.rider.phone_verified,
-                    'driver_verified': self.rider.driver_verified,
-                    'profile_complete': self.rider.profile_complete
+                    'driver_verified': self.rider.license_verified if hasattr(self.rider, 'license_verified') else False,
+                    'profile_complete': True
                 }
             },
             'bike': self.bike.to_dict() if self.bike else None,
@@ -264,7 +270,8 @@ class Ride(db.Model):
                 'available_seats': self.available_seats,
                 'current_passengers': self.current_passengers,
                 'cost_per_person': self.cost_per_person,
-                'preferred_gender': self.preferred_gender
+                'preferred_gender': self.preferred_gender,
+                'is_pink_ride': self.is_pink_ride
             },
             'details': {
                 'additional_notes': self.additional_notes,
@@ -300,6 +307,11 @@ class RideRequest(db.Model):
     # Join Request Specific Fields
     pickup_location = db.Column(db.String(100), nullable=True)  # For specific ride joins
     
+    # Book for a Friend
+    is_for_friend = db.Column(db.Boolean, default=False)
+    friend_name = db.Column(db.String(100), nullable=True)
+    friend_phone = db.Column(db.String(20), nullable=True)
+    
     # Status
     status = db.Column(db.String(20), default='pending')  # pending/accepted/rejected/active/matched/cancelled
     message = db.Column(db.Text, nullable=True)
@@ -320,6 +332,9 @@ class RideRequest(db.Model):
             'status': self.status,
             'message': self.message,
             'start_otp': self.start_otp,
+            'is_for_friend': self.is_for_friend,
+            'friend_name': self.friend_name,
+            'friend_phone': self.friend_phone,
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'responded_at': self.responded_at.isoformat() if self.responded_at else None,
         }
@@ -329,6 +344,7 @@ class RideRequest(db.Model):
             base_dict.update({
                 'passenger_name': self.passenger.name,
                 'passenger_phone': self.passenger.phone,
+                'passenger_gender': getattr(self.passenger, 'gender', 'prefer_not_to_say'),
                 'passenger_rating': getattr(self.passenger, 'rating', 0.0),
             })
         
@@ -350,6 +366,51 @@ class RideRequest(db.Model):
             })
         
         return base_dict
+
+class IncidentReport(db.Model):
+    """Incident report model for commuter safety and moderation"""
+    __tablename__ = 'incident_reports'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    reporter_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    reported_user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+    ride_id = db.Column(db.Integer, db.ForeignKey('rides.id'), nullable=True)
+    bike_id = db.Column(db.Integer, db.ForeignKey('bikes.id'), nullable=True)
+    report_type = db.Column(db.String(50), default='rider')  # rider/passenger/bike/safety
+    reason = db.Column(db.String(100), nullable=False)
+    details = db.Column(db.Text, nullable=True)
+    status = db.Column(db.String(20), default='pending')  # pending/investigating/action_taken/dismissed
+    admin_action = db.Column(db.String(50), nullable=True)  # user_blacklisted/bike_blacklisted/warning_issued/dismissed
+    admin_notes = db.Column(db.Text, nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    resolved_at = db.Column(db.DateTime, nullable=True)
+    
+    reporter = db.relationship('User', foreign_keys=[reporter_id], backref='filed_reports')
+    reported_user = db.relationship('User', foreign_keys=[reported_user_id], backref='received_reports')
+    ride = db.relationship('Ride', backref='incident_reports')
+    bike = db.relationship('Bike', backref='incident_reports')
+    
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'reporter_id': self.reporter_id,
+            'reporter_name': self.reporter.name if self.reporter else 'Unknown',
+            'reporter_phone': self.reporter.phone if self.reporter else None,
+            'reported_user_id': self.reported_user_id,
+            'reported_user_name': self.reported_user.name if self.reported_user else None,
+            'reported_user_phone': self.reported_user.phone if self.reported_user else None,
+            'ride_id': self.ride_id,
+            'bike_id': self.bike_id,
+            'bike_number': self.bike.bike_number if self.bike else None,
+            'report_type': self.report_type,
+            'reason': self.reason,
+            'details': self.details,
+            'status': self.status,
+            'admin_action': self.admin_action,
+            'admin_notes': self.admin_notes,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'resolved_at': self.resolved_at.isoformat() if self.resolved_at else None
+        }
 
 class RideMatch(db.Model):
     """Ride match model for connecting riders and passengers"""

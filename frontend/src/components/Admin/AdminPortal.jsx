@@ -23,10 +23,12 @@ import {
 } from 'lucide-react';
 
 export default function AdminPortal() {
-  const [activeTab, setActiveTab] = useState('approvals'); // approvals | users | rides
+  const [activeTab, setActiveTab] = useState('approvals'); // approvals | reports | users | bikes | rides
   const [stats, setStats] = useState(null);
   const [pendingLicenses, setPendingLicenses] = useState([]);
   const [pendingBikes, setPendingBikes] = useState([]);
+  const [incidentReports, setIncidentReports] = useState([]);
+  const [bikesDirectory, setBikesDirectory] = useState([]);
   const [usersList, setUsersList] = useState([]);
   const [ridesList, setRidesList] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -69,13 +71,25 @@ export default function AdminPortal() {
         setPendingBikes(bRes.data.pending_bikes || []);
       }
 
-      // 4. Users list
+      // 4. Incident reports
+      const repRes = await adminAPI.getIncidentReports();
+      if (repRes.data && repRes.data.success) {
+        setIncidentReports(repRes.data.reports || []);
+      }
+
+      // 5. Bikes Directory
+      const bdRes = await adminAPI.getBikesDirectory();
+      if (bdRes.data && bdRes.data.success) {
+        setBikesDirectory(bdRes.data.bikes || []);
+      }
+
+      // 6. Users list
       const uRes = await adminAPI.getUsers({ per_page: 50 });
       if (uRes.data && uRes.data.success) {
         setUsersList(uRes.data.users || []);
       }
 
-      // 5. Rides list
+      // 7. Rides list
       const rRes = await adminAPI.getAllRides({ per_page: 50 });
       if (rRes.data && rRes.data.success) {
         setRidesList(rRes.data.rides || []);
@@ -121,6 +135,74 @@ export default function AdminPortal() {
     }
   };
 
+  const handleActionReport = async (reportId, action) => {
+    setActionLoading(`report-${reportId}`);
+    try {
+      const res = await adminAPI.actionIncidentReport(reportId, action, 'Moderated by Admin');
+      if (res.data && res.data.success) {
+        setMsg(`Incident report #${reportId} actioned: ${action}`);
+        fetchAdminData();
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleBlacklistUser = async (userId, userName) => {
+    const reason = window.prompt(`Enter reason for blacklisting commuter/rider ${userName}:`, 'Violation of platform safety policies');
+    if (!reason) return;
+
+    setActionLoading(`bl-user-${userId}`);
+    try {
+      const res = await adminAPI.blacklistUser(userId, reason);
+      if (res.data && res.data.success) {
+        setMsg(`User #${userId} (${userName}) has been blacklisted and suspended.`);
+        fetchAdminData();
+      }
+    } catch (e) {
+      alert(e.response?.data?.error || 'Failed to blacklist user');
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleUnblacklistUser = async (userId, userName) => {
+    if (!window.confirm(`Reinstate user #${userId} (${userName})?`)) return;
+
+    setActionLoading(`unbl-user-${userId}`);
+    try {
+      const res = await adminAPI.unblacklistUser(userId);
+      if (res.data && res.data.success) {
+        setMsg(`User #${userId} (${userName}) has been reinstated.`);
+        fetchAdminData();
+      }
+    } catch (e) {
+      alert(e.response?.data?.error || 'Failed to reinstate user');
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleBlacklistBike = async (bikeId, bikeNumber) => {
+    const reason = window.prompt(`Enter reason for blacklisting vehicle plate ${bikeNumber}:`, 'Document fraud / Unsafe vehicle');
+    if (!reason) return;
+
+    setActionLoading(`bl-bike-${bikeId}`);
+    try {
+      const res = await adminAPI.blacklistBike(bikeId, reason);
+      if (res.data && res.data.success) {
+        setMsg(`Vehicle ${bikeNumber} has been blacklisted and removed from active pool.`);
+        fetchAdminData();
+      }
+    } catch (e) {
+      alert(e.response?.data?.error || 'Failed to blacklist vehicle');
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
   const confirmRejection = () => {
     if (!rejectModal.reason) {
       alert('Please specify or select a reason for rejection.');
@@ -152,6 +234,7 @@ export default function AdminPortal() {
   };
 
   const totalPending = pendingLicenses.length + pendingBikes.length;
+  const pendingReportsCount = incidentReports.filter(r => r.status === 'pending').length;
 
   return (
     <div className="space-y-6 pb-12">
@@ -216,10 +299,10 @@ export default function AdminPortal() {
       </div>
 
       {/* Admin Navigation Tabs */}
-      <div className="flex border-b border-slate-800 gap-2">
+      <div className="flex border-b border-slate-800 gap-2 overflow-x-auto">
         <button
           onClick={() => setActiveTab('approvals')}
-          className={`pb-3 px-3 text-xs font-bold transition-all relative ${
+          className={`pb-3 px-3 text-xs font-bold transition-all whitespace-nowrap relative ${
             activeTab === 'approvals' ? 'text-purple-400 border-b-2 border-purple-500' : 'text-slate-400 hover:text-white'
           }`}
         >
@@ -227,17 +310,35 @@ export default function AdminPortal() {
         </button>
 
         <button
+          onClick={() => setActiveTab('reports')}
+          className={`pb-3 px-3 text-xs font-bold transition-all whitespace-nowrap relative ${
+            activeTab === 'reports' ? 'text-rose-400 border-b-2 border-rose-500' : 'text-slate-400 hover:text-white'
+          }`}
+        >
+          🚨 Incident Reports {pendingReportsCount > 0 && <span className="ml-1.5 px-1.5 py-0.5 rounded-full bg-rose-500 text-white text-[10px] font-bold">{pendingReportsCount}</span>}
+        </button>
+
+        <button
           onClick={() => setActiveTab('users')}
-          className={`pb-3 px-3 text-xs font-bold transition-all relative ${
+          className={`pb-3 px-3 text-xs font-bold transition-all whitespace-nowrap relative ${
             activeTab === 'users' ? 'text-purple-400 border-b-2 border-purple-500' : 'text-slate-400 hover:text-white'
           }`}
         >
-          Commuter Users ({usersList.length})
+          👥 Commuters & Riders ({usersList.length})
+        </button>
+
+        <button
+          onClick={() => setActiveTab('bikes')}
+          className={`pb-3 px-3 text-xs font-bold transition-all whitespace-nowrap relative ${
+            activeTab === 'bikes' ? 'text-emerald-400 border-b-2 border-emerald-500' : 'text-slate-400 hover:text-white'
+          }`}
+        >
+          🏍️ Registered Vehicles ({bikesDirectory.length})
         </button>
 
         <button
           onClick={() => setActiveTab('rides')}
-          className={`pb-3 px-3 text-xs font-bold transition-all relative ${
+          className={`pb-3 px-3 text-xs font-bold transition-all whitespace-nowrap relative ${
             activeTab === 'rides' ? 'text-purple-400 border-b-2 border-purple-500' : 'text-slate-400 hover:text-white'
           }`}
         >
@@ -421,19 +522,137 @@ export default function AdminPortal() {
         </div>
       )}
 
-      {/* TAB 2: COMMUTER USERS */}
+      {/* TAB 2: INCIDENT REPORTS MODERATION QUEUE */}
+      {activeTab === 'reports' && (
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-bold text-white font-outfit flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 text-rose-400" />
+              <span>Incident & Conduct Reports Queue ({incidentReports.length})</span>
+            </h3>
+            <span className="text-xs text-slate-400">Reports filed by Chennai commuters and riders</span>
+          </div>
+
+          {incidentReports.length === 0 ? (
+            <div className="p-8 rounded-2xl glass-panel text-center border border-slate-800">
+              <CheckCircle2 className="w-6 h-6 text-emerald-400 mx-auto mb-1" />
+              <p className="text-xs font-bold text-slate-300">Clean Slate — No Incident Reports</p>
+              <p className="text-[11px] text-slate-500">No safety or conduct violations logged.</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {incidentReports.map((r) => (
+                <div key={r.id} className="p-4 rounded-2xl glass-panel border border-slate-800 space-y-3">
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="px-2 py-0.5 rounded-md bg-rose-500/20 text-rose-300 text-[10px] font-bold border border-rose-500/30">
+                          #{r.id} • {r.reason}
+                        </span>
+                        <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold ${
+                          r.status === 'pending' ? 'bg-amber-500/20 text-amber-300' : 'bg-emerald-500/20 text-emerald-300'
+                        }`}>
+                          {r.status?.toUpperCase()}
+                        </span>
+                      </div>
+                      <div className="text-xs text-slate-300 mt-1">
+                        Reporter: <strong className="text-white">{r.reporter_name || `User #${r.reporter_id}`}</strong>
+                        {r.reported_user_id && <span> ➔ Reported: <strong className="text-rose-400">{r.reported_user_name || `User #${r.reported_user_id}`}</strong></span>}
+                      </div>
+                    </div>
+
+                    <span className="text-[11px] text-slate-500">
+                      {r.created_at ? new Date(r.created_at).toLocaleString() : 'Recent'}
+                    </span>
+                  </div>
+
+                  <div className="p-3 rounded-xl bg-slate-900/90 border border-slate-800 text-xs text-slate-300">
+                    <span className="text-[10px] text-slate-500 block uppercase font-bold mb-0.5">Description</span>
+                    {r.details || 'No details provided.'}
+                  </div>
+
+                  {r.status === 'pending' && (
+                    <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-slate-800/80">
+                      {r.reported_user_id && (
+                        <button
+                          disabled={actionLoading === `report-${r.id}`}
+                          onClick={() => handleActionReport(r.id, 'user_blacklisted')}
+                          className="px-3 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs shadow-md transition-colors"
+                        >
+                          🛑 Blacklist Reported User
+                        </button>
+                      )}
+
+                      {r.bike_id && (
+                        <button
+                          disabled={actionLoading === `report-${r.id}`}
+                          onClick={() => handleActionReport(r.id, 'bike_blacklisted')}
+                          className="px-3 py-1.5 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-bold text-xs shadow-md transition-colors"
+                        >
+                          🚫 Blacklist Vehicle
+                        </button>
+                      )}
+
+                      <button
+                        disabled={actionLoading === `report-${r.id}`}
+                        onClick={() => handleActionReport(r.id, 'investigated')}
+                        className="px-3 py-1.5 rounded-xl bg-cyan-600/30 hover:bg-cyan-600/50 text-cyan-300 border border-cyan-500/30 font-bold text-xs transition-colors"
+                      >
+                        🔍 Mark Investigated
+                      </button>
+
+                      <button
+                        disabled={actionLoading === `report-${r.id}`}
+                        onClick={() => handleActionReport(r.id, 'dismissed')}
+                        className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white font-bold text-xs transition-colors"
+                      >
+                        Dismiss
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* TAB 3: COMMUTER USERS DIRECTORY */}
       {activeTab === 'users' && (
         <div className="space-y-3">
-          <h3 className="text-sm font-bold text-white font-outfit">Platform Commuter Directory</h3>
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-bold text-white font-outfit">Platform Commuter & Rider Directory</h3>
+            <span className="text-xs text-slate-400">Total Registered: {usersList.length}</span>
+          </div>
+
           <div className="space-y-2">
             {usersList.map((u) => (
-              <div key={u.id} className="p-3.5 rounded-2xl glass-panel border border-slate-800 flex items-center justify-between text-xs">
-                <div>
-                  <div className="font-bold text-white">{u.name}</div>
-                  <div className="text-slate-400 mt-0.5">{u.email} • {u.phone}</div>
+              <div key={u.id} className="p-3.5 rounded-2xl glass-panel border border-slate-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs">
+                <div className="space-y-0.5">
+                  <div className="font-bold text-white flex items-center gap-2 flex-wrap">
+                    <span>{u.name}</span>
+                    <span className="text-[10px] text-slate-500 font-mono">#{u.id}</span>
+                    {u.gender === 'female' && (
+                      <span className="px-2 py-0.5 rounded-md bg-pink-500/20 text-pink-300 text-[10px] font-bold border border-pink-500/30">
+                        🌸 Female (Pink Ride Mode)
+                      </span>
+                    )}
+                    {u.is_blacklisted && (
+                      <span className="px-2 py-0.5 rounded-md bg-rose-500/30 text-rose-300 text-[10px] font-bold border border-rose-500/50 animate-pulse">
+                        🛑 BLACKLISTED / SUSPENDED
+                      </span>
+                    )}
+                  </div>
+                  <div className="text-slate-400 flex flex-wrap items-center gap-2">
+                    <span>{u.email}</span>
+                    <span>•</span>
+                    <span>{u.phone}</span>
+                    <span>•</span>
+                    <span className="text-amber-400 font-semibold">⭐ {u.rating || 5.0}</span>
+                  </div>
                 </div>
 
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
                   <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold ${
                     u.license_verified ? 'bg-emerald-500/20 text-emerald-300' : 'bg-slate-800 text-slate-400'
                   }`}>
@@ -443,7 +662,7 @@ export default function AdminPortal() {
                   <button
                     disabled={actionLoading === `user-${u.id}`}
                     onClick={() => handleToggleUserFlag(u.id, u.is_flagged)}
-                    className={`p-1.5 rounded-lg border text-[11px] font-bold ${
+                    className={`px-2 py-1 rounded-lg border text-[10px] font-bold ${
                       u.is_flagged
                         ? 'bg-amber-500/20 text-amber-300 border-amber-500/40'
                         : 'bg-slate-800 text-slate-400 border-slate-700 hover:text-white'
@@ -451,6 +670,24 @@ export default function AdminPortal() {
                   >
                     {u.is_flagged ? 'Unflag' : 'Flag'}
                   </button>
+
+                  {u.is_blacklisted ? (
+                    <button
+                      disabled={actionLoading === `unbl-user-${u.id}`}
+                      onClick={() => handleUnblacklistUser(u.id, u.name)}
+                      className="px-2.5 py-1 rounded-lg bg-emerald-600/30 hover:bg-emerald-600/50 text-emerald-300 border border-emerald-500/40 text-[10px] font-bold transition-colors"
+                    >
+                      Reinstate User
+                    </button>
+                  ) : (
+                    <button
+                      disabled={actionLoading === `bl-user-${u.id}`}
+                      onClick={() => handleBlacklistUser(u.id, u.name)}
+                      className="px-2.5 py-1 rounded-lg bg-rose-600/20 hover:bg-rose-600/40 text-rose-300 border border-rose-500/30 text-[10px] font-bold transition-colors"
+                    >
+                      🛑 Blacklist
+                    </button>
+                  )}
                 </div>
               </div>
             ))}
@@ -458,7 +695,64 @@ export default function AdminPortal() {
         </div>
       )}
 
-      {/* TAB 3: ACTIVE RIDES */}
+      {/* TAB 4: REGISTERED VEHICLES DIRECTORY */}
+      {activeTab === 'bikes' && (
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-bold text-white font-outfit">Platform Vehicles & Registered Bikes</h3>
+            <span className="text-xs text-slate-400">Total Vehicles: {bikesDirectory.length}</span>
+          </div>
+
+          <div className="space-y-2">
+            {bikesDirectory.length === 0 ? (
+              <div className="p-6 rounded-2xl glass-panel text-center text-xs text-slate-500 border border-slate-800">
+                No vehicles registered on the platform yet.
+              </div>
+            ) : (
+              bikesDirectory.map((b) => (
+                <div key={b.id} className="p-3.5 rounded-2xl glass-panel border border-slate-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs">
+                  <div className="space-y-0.5">
+                    <div className="font-bold text-white flex items-center gap-2">
+                      <span className="text-emerald-400 font-mono">{b.bike_number}</span>
+                      <span>•</span>
+                      <span>{b.brand} {b.model}</span>
+                      <span className="text-[10px] text-slate-400">({b.bike_type})</span>
+                      {b.is_active === false && (
+                        <span className="px-2 py-0.5 rounded-md bg-rose-500/20 text-rose-300 text-[10px] font-bold">
+                          Inactive / Blacklisted
+                        </span>
+                      )}
+                    </div>
+                    <div className="text-slate-400">
+                      Owner: <strong className="text-slate-200">{b.owner_name || 'Rider'}</strong> ({b.owner_phone}) • Insurance Valid Till: {b.insurance_valid_until || 'N/A'}
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold ${
+                      b.is_verified ? 'bg-emerald-500/20 text-emerald-300' : 'bg-amber-500/20 text-amber-300'
+                    }`}>
+                      {b.is_verified ? 'Verified' : 'Pending Verification'}
+                    </span>
+
+                    {b.is_active !== false && (
+                      <button
+                        disabled={actionLoading === `bl-bike-${b.id}`}
+                        onClick={() => handleBlacklistBike(b.id, b.bike_number)}
+                        className="px-2.5 py-1 rounded-lg bg-rose-600/20 hover:bg-rose-600/40 text-rose-300 border border-rose-500/30 text-[10px] font-bold transition-colors"
+                      >
+                        🚫 Blacklist Plate
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* TAB 5: ACTIVE RIDES */}
       {activeTab === 'rides' && (
         <div className="space-y-3">
           <h3 className="text-sm font-bold text-white font-outfit">All Active Commute Rides</h3>

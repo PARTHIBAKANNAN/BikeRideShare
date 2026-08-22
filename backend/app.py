@@ -142,30 +142,12 @@ def create_app(config_name='development'):
     
     return app
 
-def run_app():
-    """Run the Flask application"""
-    # Get environment from environment variable or default to development
-    config_name = os.environ.get('FLASK_ENV', 'development')
-    
-    # Create and run the app
-    app = create_app(config_name)
-    
-    # Run with debug mode in development
-    debug_mode = config_name == 'development'
-    
-    print("[INFO] Starting Smart Ride Matcher API...")
-    print(f"   Environment: {config_name}")
-    print(f"   Debug Mode: {debug_mode}")
-    print(f"   URL: http://localhost:5000")
-    print(f"   API Docs: http://localhost:5000/docs/")
-    print("=" * 50)
-    
-    app.run(
-        host='0.0.0.0',
-        port=5000,
-        debug=debug_mode,
-        use_reloader=debug_mode
-    )
+# Module-level WSGI application instance for Gunicorn (gunicorn app:app)
+env_mode = os.environ.get('FLASK_ENV', 'production')
+app = create_app(env_mode)
 
 if __name__ == '__main__':
-    run_app() 
+    port = int(os.environ.get('PORT', 5000))
+    debug_mode = env_mode == 'development'
+    print(f"[INFO] Starting Smart Ride Matcher on port {port}...")
+    app.run(host='0.0.0.0', port=port, debug=debug_mode) 

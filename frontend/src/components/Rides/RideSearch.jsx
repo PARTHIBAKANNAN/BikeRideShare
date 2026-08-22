@@ -133,13 +133,13 @@ export default function RideSearch({
       </div>
 
       {/* Search Bar & Filters Card */}
-      <div className="glass-panel rounded-3xl p-5 sm:p-6 border border-slate-800 shadow-xl space-y-4 relative z-30">
+      <div className="glass-panel rounded-3xl p-5 sm:p-6 border border-slate-800 shadow-xl space-y-4 relative z-[200]">
         <form 
           onSubmit={(e) => { e.preventDefault(); handleSearch(); }}
           className="grid grid-cols-1 sm:grid-cols-12 gap-3"
         >
           {/* From Location */}
-          <div className="sm:col-span-4 relative z-40">
+          <div className="sm:col-span-4 relative z-[210]">
             <LocationAutocomplete
               label="Pickup Location"
               iconType="start"
@@ -157,7 +157,7 @@ export default function RideSearch({
           </div>
 
           {/* To Location */}
-          <div className="sm:col-span-4 relative z-40">
+          <div className="sm:col-span-4 relative z-[210]">
             <LocationAutocomplete
               label="Drop / Tech Park"
               iconType="destination"
@@ -218,7 +218,7 @@ export default function RideSearch({
       </div>
 
       {/* Main Split Grid: Rides List + Interactive Live Leaflet Map */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 relative z-10">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 relative z-0 isolate">
         
         {/* Left Column: Ride Cards */}
         <div className="lg:col-span-6 space-y-4">

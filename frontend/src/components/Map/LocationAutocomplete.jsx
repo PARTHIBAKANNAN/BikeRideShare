@@ -197,39 +197,43 @@ export default function LocationAutocomplete({
 
       {/* Rapido / Zomato Style Suggestions Dropdown */}
       {isOpen && (
-        <div className="absolute left-0 right-0 top-full mt-2 z-[9999] rounded-2xl bg-slate-900/98 backdrop-blur-2xl border border-slate-700 shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 max-h-80 overflow-y-auto ring-1 ring-white/10">
+        <div 
+          className="absolute left-0 right-0 top-full mt-2 z-[99999] rounded-2xl border-2 border-slate-600 shadow-[0_25px_60px_rgba(0,0,0,0.98)] overflow-hidden animate-in fade-in zoom-in-95 max-h-80 overflow-y-auto ring-2 ring-emerald-500/20"
+          style={{ backgroundColor: '#0b1329', opacity: 1 }}
+        >
           
           {/* GPS Location Option */}
           <button
             type="button"
             onClick={handleUseCurrentLocation}
-            className="w-full p-3 text-left hover:bg-emerald-500/15 border-b border-slate-800 flex items-center gap-3 transition-colors text-xs text-emerald-300 font-bold group"
+            className="w-full p-3.5 text-left hover:bg-emerald-950/60 border-b border-slate-800 flex items-center gap-3 transition-colors text-xs text-emerald-300 font-bold group"
+            style={{ backgroundColor: '#0b1329' }}
           >
-            <div className="w-8 h-8 rounded-xl bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center text-emerald-400 group-hover:scale-105 transition-transform">
+            <div className="w-8 h-8 rounded-xl bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-400 group-hover:scale-105 transition-transform shrink-0">
               <Crosshair className="w-4 h-4" />
             </div>
             <div>
-              <div className="font-extrabold flex items-center gap-1.5">
+              <div className="font-extrabold flex items-center gap-1.5 text-emerald-300">
                 <span>Use Current GPS Location</span>
-                <span className="text-[10px] bg-emerald-500/20 text-emerald-300 px-1.5 py-0.2 rounded font-mono">GPS</span>
+                <span className="text-[10px] bg-emerald-500/30 text-emerald-200 px-1.5 py-0.2 rounded font-mono font-bold">GPS</span>
               </div>
-              <div className="text-[11px] text-slate-400 font-normal">Detect current street & building in Chennai</div>
+              <div className="text-[11px] text-slate-400 font-normal mt-0.5">Detect current street, door no & pincode in Chennai</div>
             </div>
           </button>
 
           {/* Loading Indicator */}
           {loading && (
-            <div className="p-3 text-center text-xs text-slate-400 flex items-center justify-center gap-2">
-              <div className="w-3.5 h-3.5 border-2 border-emerald-400 border-t-transparent rounded-full animate-spin"></div>
-              <span>Searching Chennai roads, SEZs & pincodes...</span>
+            <div className="p-4 text-center text-xs text-slate-300 flex items-center justify-center gap-2" style={{ backgroundColor: '#0b1329' }}>
+              <div className="w-4 h-4 border-2 border-emerald-400 border-t-transparent rounded-full animate-spin"></div>
+              <span className="font-medium">Searching Chennai roads, SEZs & pincodes...</span>
             </div>
           )}
 
           {/* List of Suggestions */}
           {!loading && suggestions.length === 0 && query && (
-            <div className="p-4 text-center text-xs text-slate-400 space-y-1">
-              <p>No exact match found for "{query}".</p>
-              <p className="text-[11px] text-slate-500">We'll use live geocoding when you search or post.</p>
+            <div className="p-4 text-center text-xs text-slate-300 space-y-1" style={{ backgroundColor: '#0b1329' }}>
+              <p className="font-semibold text-white">No exact match found for "{query}".</p>
+              <p className="text-[11px] text-slate-400">We'll use live geocoding when you search or post.</p>
             </div>
           )}
 
@@ -239,9 +243,10 @@ export default function LocationAutocomplete({
                 key={idx}
                 type="button"
                 onClick={() => handleSelectLocation(loc)}
-                className="w-full p-3 text-left hover:bg-slate-800/80 border-b border-slate-800/50 flex items-start gap-3 transition-all text-xs group"
+                className="w-full p-3.5 text-left hover:bg-slate-800 border-b border-slate-800/80 flex items-start gap-3 transition-all text-xs group"
+                style={{ backgroundColor: '#0b1329' }}
               >
-                <div className="w-8 h-8 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-center shrink-0 mt-0.5 group-hover:border-emerald-500/40 transition-colors">
+                <div className="w-8 h-8 rounded-xl bg-slate-900 border border-slate-700 flex items-center justify-center shrink-0 mt-0.5 group-hover:border-emerald-500/50 transition-colors">
                   {getIcon(loc.type)}
                 </div>
 
@@ -251,13 +256,13 @@ export default function LocationAutocomplete({
                       {loc.name}
                     </span>
                     {loc.pincode && (
-                      <span className="px-2 py-0.5 rounded bg-slate-800 text-slate-300 font-mono text-[10px] shrink-0 border border-slate-700">
+                      <span className="px-2 py-0.5 rounded-md bg-slate-800 text-emerald-300 font-mono text-[10px] shrink-0 border border-slate-700 font-bold">
                         PIN: {loc.pincode}
                       </span>
                     )}
                   </div>
 
-                  <div className="text-[11px] text-slate-400 truncate mt-0.5">
+                  <div className="text-[11px] text-slate-400 group-hover:text-slate-300 truncate mt-0.5">
                     {loc.address || `${loc.area}, Chennai`}
                   </div>
                 </div>

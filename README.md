@@ -101,3 +101,20 @@ npm run dev
    * `SECRET_KEY`: `chennai_bike_share_secret_key_2026_super_secure_jwt`
    * `JWT_SECRET_KEY`: `chennai_jwt_token_secret_key_2026_safe_auth`
 5. Your API is live 24/7 with zero cold starts!
+
+---
+
+## 👨‍💻 Author & Ownership
+
+* **Creator & Lead Architect**: **PARTHIBAKANNAN S**
+* **Contact Email**: [parthisivaram45@gmail.com](mailto:parthisivaram45@gmail.com)
+* **GitHub**: [@PARTHIBAKANNAN](https://github.com/PARTHIBAKANNAN)
+
+---
+
+## 📄 Copyright & License
+
+```
+Copyright (c) 2026 PARTHIBAKANNAN S. All rights reserved.
+```
+All design, source code, and intellectual property of **SmartRide Chennai** are owned and maintained by **PARTHIBAKANNAN S**.

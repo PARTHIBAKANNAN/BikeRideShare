@@ -57,8 +57,8 @@ def create_app(config_name='development'):
     api = Api(
         app,
         version='1.0',
-        title='Smart Ride Matcher API',
-        description='AI-Powered Bike Ride Sharing Platform for Chennai',
+        title='SmartRide Chennai API',
+        description='AI & Road Corridor Bike Ride Sharing Platform for Chennai • Developed & Owned by PARTHIBAKANNAN S • Contact: parthisivaram45@gmail.com • © 2026 PARTHIBAKANNAN S',
         doc='/docs/',
         authorizations={
             'Bearer': {

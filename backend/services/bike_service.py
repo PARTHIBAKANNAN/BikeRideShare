@@ -46,83 +46,62 @@ class BikeService:
         if not user.is_active:
             return {'success': False, 'error': 'Account is suspended or deactivated'}
         
-        # REQUIREMENT: User must have verified license before registering bikes
-        if not user.license_verified:
-            if not user.license_number:
-                return {
-                    'success': False, 
-                    'error': 'License verification required before registering bikes. Please submit your driving license for verification first.',
-                    'redirect_to': 'license_verification'
-                }
-            elif user.license_verification_status == 'pending':
-                return {
-                    'success': False, 
-                    'error': 'License verification is pending admin approval. Please wait for approval before registering bikes.',
-                    'redirect_to': 'verification_status'
-                }
-            elif user.license_verification_status == 'rejected':
-                return {
-                    'success': False, 
-                    'error': f'License verification was rejected. Reason: {user.license_rejection_reason}. Please resubmit your license before registering bikes.',
-                    'redirect_to': 'license_verification'
-                }
-        
         # Extract and validate bike data
-        bike_number = bike_data.get('bike_number', '').strip()
-        bike_type = bike_data.get('bike_type', '').strip().lower()
+        bike_number = bike_data.get('bike_number', '').strip().replace(' ', '').upper()
+        bike_type = bike_data.get('bike_type', 'motorcycle').strip().lower()
         brand = bike_data.get('brand', '').strip()
         model = bike_data.get('model', '').strip()
         color = bike_data.get('color', '').strip()
         manufacture_year = bike_data.get('manufacture_year')
+        rc_number = bike_data.get('rc_number', '').strip()
+        rc_image_url = bike_data.get('rc_image_url', '').strip()
+        insurance_number = bike_data.get('insurance_number', '').strip()
+        insurance_valid_till = bike_data.get('insurance_valid_till')
         
         # Validation
         errors = []
         
-        # Validate bike number
-        bike_validation = BikeService.validate_bike_number(bike_number)
-        if not bike_validation['valid']:
-            errors.append(f"Bike number: {bike_validation['error']}")
+        if not bike_number or len(bike_number) < 5:
+            errors.append("Valid vehicle registration plate number is required")
         else:
-            formatted_bike_number = bike_validation['formatted_number']
-            # Check if bike number already exists
-            existing_bike = Bike.query.filter_by(bike_number=formatted_bike_number).first()
-            if existing_bike:
-                errors.append("Bike number already registered")
-        
-        # Validate bike type
-        valid_types = ['bike', 'scooter', 'motorcycle']
-        if bike_type not in valid_types:
-            errors.append(f"Bike type must be one of: {', '.join(valid_types)}")
+            existing_bike = Bike.query.filter_by(bike_number=bike_number).first()
+            if existing_bike and existing_bike.user_id != user_id:
+                errors.append("Bike number already registered by another user")
         
         # Validate brand and model
-        if not brand or len(brand) < 2:
-            errors.append("Brand is required (minimum 2 characters)")
-        if not model or len(model) < 2:
-            errors.append("Model is required (minimum 2 characters)")
-        
-        # Validate manufacture year
-        current_year = datetime.now().year
-        if manufacture_year:
-            try:
-                year = int(manufacture_year)
-                if year < 1990 or year > current_year + 1:
-                    errors.append(f"Manufacture year must be between 1990 and {current_year + 1}")
-            except (ValueError, TypeError):
-                errors.append("Invalid manufacture year")
+        if not brand:
+            errors.append("Brand is required")
+        if not model:
+            errors.append("Model is required")
         
         if errors:
             return {'success': False, 'errors': errors}
         
         # Create new bike
         try:
+            # Parse insurance date if provided
+            parsed_ins_date = None
+            if insurance_valid_till:
+                try:
+                    if isinstance(insurance_valid_till, str):
+                        parsed_ins_date = datetime.strptime(insurance_valid_till, '%Y-%m-%d').date()
+                except Exception:
+                    pass
+
             new_bike = Bike(
                 user_id=user_id,
-                bike_number=formatted_bike_number,
+                bike_number=bike_number,
                 bike_type=bike_type,
                 brand=brand,
                 model=model,
                 color=color if color else None,
-                manufacture_year=int(manufacture_year) if manufacture_year else None
+                manufacture_year=int(manufacture_year) if manufacture_year else None,
+                rc_number=rc_number if rc_number else None,
+                rc_image_url=rc_image_url if rc_image_url else None,
+                insurance_number=insurance_number if insurance_number else None,
+                insurance_valid_till=parsed_ins_date,
+                is_verified=False,
+                is_active=False
             )
             
             db.session.add(new_bike)
@@ -130,7 +109,7 @@ class BikeService:
             
             return {
                 'success': True,
-                'message': 'Bike registered successfully. Pending admin verification.',
+                'message': 'Bike registered successfully. Submitted for Admin verification.',
                 'bike': new_bike.to_dict()
             }
             

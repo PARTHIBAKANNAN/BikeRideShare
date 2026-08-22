@@ -346,14 +346,15 @@ class AuthService:
         # Extract license data
         license_number = license_data.get('license_number', '').strip()
         license_image_url = license_data.get('license_image_url', '').strip()
+        license_expiry_date = license_data.get('license_expiry_date')
         
         # Validation
         errors = []
         
         if not license_number:
             errors.append("License number is required")
-        elif len(license_number) < 8:
-            errors.append("License number must be at least 8 characters")
+        elif len(license_number) < 5:
+            errors.append("License number must be at least 5 characters")
         
         # Check if license number is already used by another user
         existing_license = User.query.filter(
@@ -368,6 +369,15 @@ class AuthService:
             return {'success': False, 'errors': errors}
         
         try:
+            # Parse expiry date if provided
+            if license_expiry_date:
+                try:
+                    if isinstance(license_expiry_date, str):
+                        from datetime import datetime
+                        user.license_expiry_date = datetime.strptime(license_expiry_date, '%Y-%m-%d').date()
+                except Exception:
+                    pass
+                    
             # Update user license information
             user.license_number = license_number
             user.license_image_url = license_image_url if license_image_url else None

@@ -6,6 +6,9 @@ from models.models import db, User, Bike, Ride, RideRequest, RideMatch, Report
 class AdminService:
     """Service for admin-only operations and management"""
     
+    ADMIN_EMAIL = "admin@gmail.com"
+    ADMIN_PASS = "Admin@7781"
+    
     @staticmethod
     def verify_admin_access(user_id: int) -> bool:
         """Check if user has admin access"""
@@ -15,13 +18,12 @@ class AdminService:
         if not user:
             return False
         
-        # Hardcoded admin check
-        return user.email == 'parthi@admin.com'
+        return user.email.lower() == AdminService.ADMIN_EMAIL.lower()
     
     @staticmethod
     def verify_admin_credentials(email: str, password: str) -> bool:
         """Verify admin credentials directly"""
-        return email == 'parthi@admin.com' and password == '7781'
+        return email.lower() == AdminService.ADMIN_EMAIL.lower() and password == AdminService.ADMIN_PASS
     
     @staticmethod
     def get_platform_stats() -> dict:

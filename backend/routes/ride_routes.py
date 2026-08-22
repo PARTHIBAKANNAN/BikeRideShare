@@ -376,9 +376,75 @@ class PopularRoutes(Resource):
                 ],
                 'total_routes': len(popular_routes)
             }, 200
-            
         except Exception as e:
             return {'success': False, 'error': f'Failed to get popular routes: {str(e)}'}, 500
+
+@ride_ns.route('/route-preview')
+class RoutePreview(Resource):
+    @ride_ns.doc('get_route_preview')
+    @ride_ns.response(200, '✅ Route preview calculated successfully')
+    def post(self):
+        """Calculate road route polyline, distance, duration, and fare preview"""
+        try:
+            from services.route_service import RouteService
+            from services.fare_service import FareService
+            
+            data = request.get_json() or {}
+            from_loc = data.get('from_location', '').strip()
+            to_loc = data.get('to_location', '').strip()
+            dep_time = data.get('departure_time')
+            bike_type = data.get('bike_type', 'bike')
+            
+            if not from_loc or not to_loc:
+                return {'success': False, 'error': 'Both from_location and to_location are required'}, 400
+                
+            route_info = RouteService.calculate_road_route(from_loc, to_loc)
+            fare_info = FareService.calculate_fare(from_loc, to_loc, dep_time, bike_type)
+            
+            return {
+                'success': True,
+                'from_location': from_loc,
+                'to_location': to_loc,
+                'from_coords': route_info.get('from_coords'),
+                'to_coords': route_info.get('to_coords'),
+                'distance_km': route_info.get('distance_km'),
+                'duration_minutes': route_info.get('duration_minutes'),
+                'coordinates': route_info.get('coordinates', []),
+                'geojson': route_info.get('geojson'),
+                'fare': fare_info
+            }, 200
+            
+        except Exception as e:
+            return {'success': False, 'error': f'Failed to calculate route preview: {str(e)}'}, 500
+
+@ride_ns.route('/chennai-locations')
+class ChennaiLocations(Resource):
+    @ride_ns.doc('get_chennai_locations')
+    @ride_ns.response(200, '✅ Chennai locations retrieved successfully')
+    def get(self):
+        """Get pre-seeded Chennai commuter locations for autocomplete"""
+        try:
+            from services.route_service import RouteService
+            query = request.args.get('q', '')
+            locations = RouteService.get_locations_list(query)
+            return {'success': True, 'locations': locations, 'count': len(locations)}, 200
+        except Exception as e:
+            return {'success': False, 'error': f'Failed to get locations: {str(e)}'}, 500
+
+@ride_ns.route('/reverse-geocode')
+class ReverseGeocode(Resource):
+    @ride_ns.doc('reverse_geocode_coordinates')
+    @ride_ns.response(200, '✅ Coordinates reverse geocoded successfully')
+    def get(self):
+        """Reverse geocode GPS coordinates (lat, lng) to Chennai address and pincode"""
+        try:
+            from services.route_service import RouteService
+            lat = float(request.args.get('lat', 13.0827))
+            lng = float(request.args.get('lng', 80.2707))
+            result = RouteService.reverse_geocode(lat, lng)
+            return result, 200
+        except Exception as e:
+            return {'success': False, 'error': f'Failed to reverse geocode: {str(e)}'}, 500
 
 # Configure JWT security for Swagger
 ride_ns.authorizations = {

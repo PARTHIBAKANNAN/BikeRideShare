@@ -4,6 +4,12 @@ Smart Ride Matcher - Flask Backend Application
 """
 
 import os
+import sys
+
+# Set UTF-8 encoding support
+if hasattr(sys.stdout, 'reconfigure'):
+    sys.stdout.reconfigure(encoding='utf-8')
+
 from flask import Flask, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from flask_jwt_extended import JWTManager
@@ -26,9 +32,11 @@ def create_app(config_name='development'):
     
     app.config.from_object(config[config_name])
     
-    # Configure CORS properly
+    # Configure CORS properly for React (Vite & CRA) and production
     CORS(app, 
-         origins=['http://localhost:3000', 'http://127.0.0.1:3000'],
+         origins=['http://localhost:3000', 'http://127.0.0.1:3000', 
+                  'http://localhost:5173', 'http://127.0.0.1:5173',
+                  'http://localhost:4173', 'http://127.0.0.1:4173'],
          methods=['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
          allow_headers=['Content-Type', 'Authorization'],
          supports_credentials=True)
@@ -45,7 +53,7 @@ def create_app(config_name='development'):
     # Create database tables
     with app.app_context():
         db.create_all()
-        print("✅ Database tables created successfully")
+        print("[OK] Database tables verified / created successfully")
     
     # Initialize Flask-RESTX API
     api = Api(
@@ -113,13 +121,17 @@ def create_app(config_name='development'):
     # Configuration status endpoint
     @app.route('/api/status')
     def status():
+        db_type = "Neon PostgreSQL" if Config.is_postgres() else "SQLite"
         return jsonify({
-            "database": "SQLite",
+            "database": db_type,
             "authentication": "JWT",
             "api_docs": "Swagger/OpenAPI",
             "cors_enabled": True,
             "debug_mode": app.config.get('DEBUG', False),
-            "azure_openai_configured": config[config_name].is_azure_configured()
+            "gemini_ai_configured": Config.is_gemini_configured(),
+            "gemini_model": Config.GEMINI_MODEL,
+            "routing_engine": "OSRM + OpenStreetMap (Chennai Geo)",
+            "status": "online"
         })
     
     return app
@@ -135,7 +147,7 @@ def run_app():
     # Run with debug mode in development
     debug_mode = config_name == 'development'
     
-    print(f"🚀 Starting Smart Ride Matcher API...")
+    print("[INFO] Starting Smart Ride Matcher API...")
     print(f"   Environment: {config_name}")
     print(f"   Debug Mode: {debug_mode}")
     print(f"   URL: http://localhost:5000")

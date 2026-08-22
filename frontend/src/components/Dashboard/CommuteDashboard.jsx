@@ -1,0 +1,321 @@
+import React, { useState, useEffect } from 'react';
+import { rideAPI, dashboardAPI } from '../../api';
+import confetti from 'canvas-confetti';
+import { LayoutDashboard, Bike, ShieldCheck, CheckCircle2, XCircle, Phone, MessageSquare, Clock, MapPin, Sparkles, RefreshCw } from 'lucide-react';
+
+export default function CommuteDashboard({ currentUser, onOpenPostRide }) {
+  const [activeTab, setActiveTab] = useState('requests'); // requests | offered | booked
+  const [pendingRequests, setPendingRequests] = useState([]);
+  const [offeredRides, setOfferedRides] = useState([]);
+  const [myBookings, setMyBookings] = useState([]);
+  const [stats, setStats] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [actionLoading, setActionLoading] = useState(null);
+
+  useEffect(() => {
+    fetchDashboardData();
+  }, []);
+
+  const fetchDashboardData = async () => {
+    setLoading(true);
+    try {
+      // 1. Fetch user rides
+      const ridesRes = await rideAPI.getMyRides('all');
+      if (ridesRes.data && ridesRes.data.success) {
+        setOfferedRides(ridesRes.data.rides || []);
+      }
+
+      // 2. Fetch my bookings
+      const reqRes = await rideAPI.getMyRequests();
+      if (reqRes.data && reqRes.data.success) {
+        setMyBookings(reqRes.data.requests || []);
+      }
+
+      // 3. Fetch pending requests for user's offered rides
+      if (ridesRes.data?.rides) {
+        let allPending = [];
+        for (const r of ridesRes.data.rides) {
+          try {
+            const rReq = await rideAPI.getRideRequests(r.id);
+            if (rReq.data?.success && rReq.data?.requests) {
+              const pendingOnly = rReq.data.requests.filter(req => req.status === 'pending');
+              allPending = allPending.concat(pendingOnly.map(req => ({ ...req, ride_info: r })));
+            }
+          } catch (e) {
+            // Ignore if no access
+          }
+        }
+        setPendingRequests(allPending);
+      }
+
+      // 4. Quick stats
+      const statsRes = await dashboardAPI.getQuickStats();
+      if (statsRes.data && statsRes.data.success) {
+        setStats(statsRes.data.stats);
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleRespondRequest = async (requestId, response) => {
+    setActionLoading(requestId);
+    try {
+      const res = await rideAPI.respondToRequest(requestId, response);
+      if (res.data && res.data.success) {
+        if (response === 'accepted') {
+          confetti({ particleCount: 70, spread: 60 });
+        }
+        fetchDashboardData();
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  return (
+    <div className="space-y-6 pb-12">
+      
+      {/* Header & Stats Cards */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div>
+          <h2 className="text-2xl sm:text-3xl font-extrabold text-white font-outfit flex items-center gap-2.5">
+            <span>Commute Dashboard</span>
+            <span className="w-2.5 h-2.5 rounded-full bg-emerald-400"></span>
+          </h2>
+          <p className="text-xs text-slate-400 mt-1">Manage your active Chennai rides, incoming requests, and travel bookings</p>
+        </div>
+
+        <button
+          onClick={onOpenPostRide}
+          className="py-2.5 px-4 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-500 hover:to-teal-400 text-white text-xs font-bold shadow-lg shadow-emerald-600/25 transition-all"
+        >
+          ➕ Post New Ride
+        </button>
+      </div>
+
+      {/* Stats KPI Grid */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div className="p-4 rounded-2xl glass-panel border border-slate-800">
+          <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Rides Offered</span>
+          <div className="text-2xl font-extrabold text-white font-outfit mt-1">
+            {stats?.rides_offered ?? currentUser?.total_rides_offered ?? 0}
+          </div>
+        </div>
+
+        <div className="p-4 rounded-2xl glass-panel border border-slate-800">
+          <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Rides Taken</span>
+          <div className="text-2xl font-extrabold text-cyan-400 font-outfit mt-1">
+            {stats?.rides_taken ?? currentUser?.total_rides_taken ?? 0}
+          </div>
+        </div>
+
+        <div className="p-4 rounded-2xl glass-panel border border-slate-800">
+          <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Commuter Rating</span>
+          <div className="text-2xl font-extrabold text-amber-400 font-outfit mt-1 flex items-center gap-1">
+            ⭐ {currentUser?.rating || 4.9}
+          </div>
+        </div>
+
+        <div className="p-4 rounded-2xl glass-panel border border-slate-800">
+          <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Verification Status</span>
+          <div className="text-sm font-bold text-emerald-400 mt-2 flex items-center gap-1.5">
+            <ShieldCheck className="w-4 h-4" />
+            <span>{currentUser?.license_verified ? 'DL Verified' : 'Phone Verified'}</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Tabs */}
+      <div className="flex items-center gap-2 border-b border-slate-800 pb-2">
+        <button
+          onClick={() => setActiveTab('requests')}
+          className={`px-4 py-2 rounded-xl text-xs font-bold transition-all relative ${
+            activeTab === 'requests'
+              ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+              : 'text-slate-400 hover:text-white'
+          }`}
+        >
+          Incoming Join Requests
+          {pendingRequests.length > 0 && (
+            <span className="ml-2 bg-emerald-500 text-slate-950 font-mono font-extrabold px-1.5 py-0.2 rounded-full text-[10px]">
+              {pendingRequests.length}
+            </span>
+          )}
+        </button>
+
+        <button
+          onClick={() => setActiveTab('offered')}
+          className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+            activeTab === 'offered'
+              ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+              : 'text-slate-400 hover:text-white'
+          }`}
+        >
+          My Offered Rides ({offeredRides.length})
+        </button>
+
+        <button
+          onClick={() => setActiveTab('booked')}
+          className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+            activeTab === 'booked'
+              ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+              : 'text-slate-400 hover:text-white'
+          }`}
+        >
+          My Booked Requests ({myBookings.length})
+        </button>
+      </div>
+
+      {/* Tab 1: Incoming Join Requests */}
+      {activeTab === 'requests' && (
+        <div className="space-y-3">
+          {pendingRequests.length === 0 ? (
+            <div className="p-10 rounded-3xl glass-panel text-center space-y-2 border border-slate-800">
+              <div className="w-12 h-12 rounded-2xl bg-slate-800 text-slate-400 flex items-center justify-center mx-auto">
+                <CheckCircle2 className="w-6 h-6 text-emerald-400" />
+              </div>
+              <h4 className="text-sm font-bold text-white">All Caught Up!</h4>
+              <p className="text-xs text-slate-400">No pending join requests for your offered rides right now.</p>
+            </div>
+          ) : (
+            pendingRequests.map((req) => (
+              <div key={req.id} className="p-5 rounded-3xl glass-panel border border-slate-800 shadow-lg space-y-3">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-2xl bg-cyan-600 font-bold flex items-center justify-center text-white text-sm">
+                      {(req.passenger_name || 'P')[0]}
+                    </div>
+                    <div>
+                      <div className="text-sm font-bold text-white flex items-center gap-1.5">
+                        {req.passenger_name || 'Passenger'}
+                        <span className="text-xs text-amber-400">⭐ {req.passenger_rating || 5.0}</span>
+                      </div>
+                      <div className="text-xs text-slate-400">
+                        Requested {req.seats_needed || 1} seat • {req.created_at ? new Date(req.created_at).toLocaleDateString() : 'Today'}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Actions */}
+                  <div className="flex items-center gap-2 w-full sm:w-auto">
+                    <button
+                      disabled={actionLoading === req.id}
+                      onClick={() => handleRespondRequest(req.id, 'accepted')}
+                      className="flex-1 sm:flex-none px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold flex items-center justify-center gap-1.5 shadow-md transition-all disabled:opacity-50"
+                    >
+                      <CheckCircle2 className="w-4 h-4" /> Accept Request
+                    </button>
+
+                    <button
+                      disabled={actionLoading === req.id}
+                      onClick={() => handleRespondRequest(req.id, 'rejected')}
+                      className="flex-1 sm:flex-none px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-rose-400 text-xs font-bold flex items-center justify-center gap-1.5 transition-colors disabled:opacity-50"
+                    >
+                      <XCircle className="w-4 h-4" /> Reject
+                    </button>
+                  </div>
+                </div>
+
+                <div className="p-3 rounded-2xl bg-slate-950/60 border border-slate-800 text-xs space-y-1">
+                  <div className="text-slate-300">
+                    <strong className="text-emerald-400">Boarding Point:</strong> {req.pickup_location || 'Main Road Junction'}
+                  </div>
+                  {req.message && (
+                    <div className="text-slate-400 italic">"{req.message}"</div>
+                  )}
+                  {req.passenger_phone && (
+                    <div className="pt-1 text-slate-300 flex items-center gap-2 font-mono">
+                      <Phone className="w-3.5 h-3.5 text-emerald-400" /> {req.passenger_phone}
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      )}
+
+      {/* Tab 2: My Offered Rides */}
+      {activeTab === 'offered' && (
+        <div className="space-y-3">
+          {offeredRides.length === 0 ? (
+            <div className="p-10 rounded-3xl glass-panel text-center space-y-2 border border-slate-800">
+              <p className="text-xs text-slate-400">You haven't posted any rides yet.</p>
+              <button
+                onClick={onOpenPostRide}
+                className="mt-2 px-4 py-2 bg-emerald-600 text-white text-xs font-bold rounded-xl"
+              >
+                Offer Your First Ride
+              </button>
+            </div>
+          ) : (
+            offeredRides.map((ride) => (
+              <div key={ride.id} className="p-4 rounded-2xl glass-panel border border-slate-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                <div>
+                  <div className="text-sm font-bold text-white flex items-center gap-2">
+                    <span>{ride.from_location} ➔ {ride.to_location}</span>
+                    <span className="text-[10px] bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded-full font-bold">
+                      {ride.status || 'Active'}
+                    </span>
+                  </div>
+                  <div className="text-xs text-slate-400 mt-1">
+                    🕒 {ride.departure_time} ({ride.departure_date}) • ₹{ride.cost_per_person} • {ride.available_seats} seats left
+                  </div>
+                </div>
+
+                <div className="text-right">
+                  <span className="text-xs font-bold text-emerald-400 font-mono">
+                    {ride.current_passengers || 0} / {ride.available_seats || 1} Passengers
+                  </span>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      )}
+
+      {/* Tab 3: My Booked Requests */}
+      {activeTab === 'booked' && (
+        <div className="space-y-3">
+          {myBookings.length === 0 ? (
+            <div className="p-10 rounded-3xl glass-panel text-center space-y-2 border border-slate-800">
+              <p className="text-xs text-slate-400">You haven't requested any rides yet.</p>
+            </div>
+          ) : (
+            myBookings.map((req) => (
+              <div key={req.id} className="p-4 rounded-2xl glass-panel border border-slate-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                <div>
+                  <div className="text-sm font-bold text-white flex items-center gap-2">
+                    <span>Pickup: {req.pickup_location || 'Requested Spot'}</span>
+                    <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
+                      req.status === 'accepted' ? 'bg-emerald-500/20 text-emerald-300' :
+                      req.status === 'rejected' ? 'bg-rose-500/20 text-rose-300' :
+                      'bg-amber-500/20 text-amber-300'
+                    }`}>
+                      {req.status ? req.status.toUpperCase() : 'PENDING'}
+                    </span>
+                  </div>
+                  <div className="text-xs text-slate-400 mt-1">
+                    Requested on {req.created_at ? new Date(req.created_at).toLocaleDateString() : 'Today'}
+                  </div>
+                </div>
+
+                {req.status === 'accepted' && (
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold text-emerald-400">🎉 Ride Confirmed!</span>
+                  </div>
+                )}
+              </div>
+            ))
+          )}
+        </div>
+      )}
+
+    </div>
+  );
+}

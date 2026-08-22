@@ -28,6 +28,7 @@ class User(db.Model):
     
     # License Verification (Required to offer rides)
     license_number = db.Column(db.String(20), nullable=True)
+    license_expiry_date = db.Column(db.Date, nullable=True)
     license_image_url = db.Column(db.String(255), nullable=True)
     license_verified = db.Column(db.Boolean, default=False)
     license_verification_status = db.Column(db.String(20), default='pending')  # pending/approved/rejected
@@ -80,6 +81,8 @@ class User(db.Model):
             'phone_verified': self.phone_verified,
             'email_verified': self.email_verified,
             'license_number': self.license_number,
+            'license_expiry_date': self.license_expiry_date.isoformat() if self.license_expiry_date else None,
+            'license_image_url': self.license_image_url,
             'license_verified': self.license_verified,
             'license_verification_status': self.license_verification_status,
             'license_rejection_reason': self.license_rejection_reason,
@@ -107,14 +110,16 @@ class Bike(db.Model):
     
     # Bike Details
     bike_number = db.Column(db.String(20), unique=True, nullable=False)
-    bike_type = db.Column(db.String(20), nullable=False)  # bike/scooter/motorcycle
+    bike_type = db.Column(db.String(20), nullable=False)  # motorcycle/scooter/bike
     brand = db.Column(db.String(50), nullable=False)
     model = db.Column(db.String(50), nullable=False)
     color = db.Column(db.String(30), nullable=True)
     manufacture_year = db.Column(db.Integer, nullable=True)
     
     # Documents
-    rc_number = db.Column(db.String(20), nullable=True)
+    rc_number = db.Column(db.String(30), nullable=True)
+    rc_image_url = db.Column(db.String(255), nullable=True)
+    insurance_number = db.Column(db.String(50), nullable=True)
     insurance_valid_till = db.Column(db.Date, nullable=True)
     
     # Status
@@ -135,6 +140,8 @@ class Bike(db.Model):
             'color': self.color,
             'manufacture_year': self.manufacture_year,
             'rc_number': self.rc_number,
+            'rc_image_url': self.rc_image_url,
+            'insurance_number': self.insurance_number,
             'insurance_valid_till': self.insurance_valid_till.isoformat() if self.insurance_valid_till else None,
             'is_active': self.is_active,
             'is_verified': self.is_verified,

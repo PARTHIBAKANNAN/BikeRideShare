@@ -179,6 +179,7 @@ class Ride(db.Model):
     # Status
     status = db.Column(db.String(20), default='active')  # active/completed/cancelled
     is_recurring = db.Column(db.Boolean, default=False)
+    recurring_days = db.Column(db.Text, nullable=True)  # JSON: ["monday", "tuesday", ...]
     
     # Timestamps
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
@@ -195,6 +196,22 @@ class Ride(db.Model):
     def set_via_points(self, points_list):
         """Set via points from list"""
         self.via_points = json.dumps(points_list)
+
+    def get_recurring_days(self):
+        """Get recurring days as list"""
+        try:
+            return json.loads(self.recurring_days) if self.recurring_days else []
+        except Exception:
+            return []
+    
+    def set_recurring_days(self, days_list):
+        """Set recurring days from list"""
+        if isinstance(days_list, list):
+            self.recurring_days = json.dumps(days_list)
+        elif isinstance(days_list, str):
+            self.recurring_days = json.dumps([days_list])
+        else:
+            self.recurring_days = json.dumps([])
     
     def has_available_seats(self):
         """Check if ride has available seats"""
@@ -223,17 +240,11 @@ class Ride(db.Model):
                 'total_rides_offered': self.rider.total_rides_offered,
                 'verified_status': {
                     'phone_verified': self.rider.phone_verified,
-                    'email_verified': self.rider.email_verified
+                    'driver_verified': self.rider.driver_verified,
+                    'profile_complete': self.rider.profile_complete
                 }
             },
-            'bike': {
-                'bike_number': self.bike.bike_number if self.bike else 'N/A',
-                'bike_type': self.bike.bike_type if self.bike else 'N/A',
-                'brand': self.bike.brand if self.bike else 'N/A',
-                'model': self.bike.model if self.bike else 'N/A',
-                'color': self.bike.color if self.bike else 'N/A',
-                'is_verified': self.bike.is_verified if self.bike else False
-            },
+            'bike': self.bike.to_dict() if self.bike else None,
             'route': {
                 'from_location': self.from_location,
                 'to_location': self.to_location,
@@ -255,6 +266,7 @@ class Ride(db.Model):
                 'additional_notes': self.additional_notes,
                 'status': self.status,
                 'is_recurring': self.is_recurring,
+                'recurring_days': self.get_recurring_days(),
                 'created_at': self.created_at.isoformat() if self.created_at else None
             }
         }

@@ -173,8 +173,8 @@ export default function PostRideModal({
             )}
 
             {/* From / To Locations */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 relative z-30">
-              <div className="relative z-40">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 relative z-[300]">
+              <div className="relative z-[310]">
                 <LocationAutocomplete
                   label="Start / Pickup Location"
                   iconType="start"
@@ -192,7 +192,7 @@ export default function PostRideModal({
                 />
               </div>
 
-              <div className="relative z-40">
+              <div className="relative z-[310]">
                 <LocationAutocomplete
                   label="Destination / Office / Tech Park"
                   iconType="destination"
@@ -213,7 +213,7 @@ export default function PostRideModal({
 
             {/* Live Route Preview Map Widget */}
             {routePreview && (
-              <div className="rounded-2xl overflow-hidden border border-slate-800 bg-slate-950 p-2 space-y-2">
+              <div className="rounded-2xl overflow-hidden border border-slate-800 bg-slate-950 p-2 space-y-2 relative z-0 isolate">
                 <ChennaiCommuteMap
                   fromCoords={routePreview.from_coords}
                   toCoords={routePreview.to_coords}

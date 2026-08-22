@@ -32,11 +32,9 @@ def create_app(config_name='development'):
     
     app.config.from_object(config[config_name])
     
-    # Configure CORS properly for React (Vite & CRA) and production
+    # Configure CORS properly for Hugging Face Spaces iframe & local dev
     CORS(app, 
-         origins=['http://localhost:3000', 'http://127.0.0.1:3000', 
-                  'http://localhost:5173', 'http://127.0.0.1:5173',
-                  'http://localhost:4173', 'http://127.0.0.1:4173'],
+         resources={r"/api/*": {"origins": "*"}},
          methods=['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
          allow_headers=['Content-Type', 'Authorization'],
          supports_credentials=True)
@@ -89,34 +87,42 @@ def create_app(config_name='development'):
     api.add_namespace(admin_ns, path='/api/admin')
     api.add_namespace(notification_ns, path='/api')
     
-    # Basic health check endpoint
-    @app.route('/')
-    def home():
-        return jsonify({
-            "message": "🚴‍♂️ Smart Ride Matcher API - Chennai Daily Commute",
-            "status": "active",
-            "version": "1.0.0",
-            "swagger_ui": "/docs/",
-            "features": [
-                "✅ User Authentication (JWT)",
-                "🏍️ Bike Registration & Management",
-                "🛣️ Ride Posting & Searching",
-                "🤝 Join Ride Requests",
-                "📊 User Dashboard & History",
-                "🤖 AI-Powered Route Matching (Coming Soon)",
-                "📍 Chennai Area Coverage",
-                "📱 Mobile-Friendly API"
-            ],
-            "endpoints": {
-                "authentication": "/api/auth/",
-                "bike_management": "/api/bikes/",
-                "ride_management": "/api/rides/",
-                "user_dashboard": "/api/dashboard/",
-                "admin_dashboard": "/api/admin/",
-                "swagger_docs": "/docs/",
-                "health_check": "/"
-            }
-        })
+    # Check for compiled frontend distribution folder
+    dist_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'static_dist')
+    if not os.path.exists(dist_dir):
+        dist_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'frontend', 'dist')
+        
+    if os.path.exists(dist_dir):
+        from flask import send_from_directory
+        
+        @app.route('/', defaults={'path': ''})
+        @app.route('/<path:path>')
+        def serve_frontend(path):
+            if path.startswith('api/') or path.startswith('docs') or path.startswith('swagger'):
+                return jsonify({'error': 'Not found'}), 404
+            if path != "" and os.path.exists(os.path.join(dist_dir, path)):
+                return send_from_directory(dist_dir, path)
+            return send_from_directory(dist_dir, 'index.html')
+    else:
+        # Basic health check endpoint when running API-only
+        @app.route('/')
+        def home():
+            return jsonify({
+                "message": "🚴‍♂️ Smart Ride Matcher API - Chennai Daily Commute",
+                "status": "active",
+                "version": "1.0.0",
+                "swagger_ui": "/docs/",
+                "features": [
+                    "✅ User Authentication (JWT)",
+                    "🏍️ Bike Registration & Management",
+                    "🛣️ Ride Posting & Searching",
+                    "🤝 Join Ride Requests",
+                    "📊 User Dashboard & History",
+                    "🤖 AI-Powered Route Matching",
+                    "📍 Chennai Area Coverage",
+                    "📱 Mobile-Friendly API"
+                ]
+            })
     
     # Configuration status endpoint
     @app.route('/api/status')

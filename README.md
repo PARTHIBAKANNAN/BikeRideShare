@@ -1,3 +1,14 @@
+---
+title: SmartRide Chennai - AI Bike Ride Sharing
+emoji: 🏍️
+colorFrom: green
+colorTo: indigo
+sdk: docker
+app_port: 7860
+pinned: false
+license: mit
+---
+
 # 🚴‍♂️ Smart Ride Matcher - Chennai Daily Commute
 
 An AI & Road Corridor-powered **Bike Ride-Sharing (Bike Pooling) Platform** tailored specifically for daily office commuters across Chennai (OMR, GST Road, 100ft Inner Ring Road, Mount Road, Ambattur & Porur IT Corridors).

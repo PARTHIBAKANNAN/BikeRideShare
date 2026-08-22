@@ -54,6 +54,7 @@ export const rideAPI = {
 export const bikeAPI = {
   getMyBikes: () => api.get('/api/bikes/'),
   registerBike: (bikeData) => api.post('/api/bikes/register', bikeData),
+  updateBike: (bikeId, bikeData) => api.put(`/api/bikes/${bikeId}`, bikeData),
   setActiveBike: (bikeId) => api.post('/api/bikes/set-active', { bike_id: bikeId }),
   deactivateBike: (bikeId) => api.post('/api/bikes/deactivate', { bike_id: bikeId }),
 };

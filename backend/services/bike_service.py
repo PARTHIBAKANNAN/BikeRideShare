@@ -220,34 +220,65 @@ class BikeService:
     
     @staticmethod
     def update_bike(user_id: int, bike_id: int, update_data: dict) -> dict:
-        """Update bike information"""
+        """Update vehicle information (brand, model, RC, insurance policy and expiry)"""
         from models.models import db, Bike
+        from datetime import date, timedelta
         
         try:
             bike = Bike.query.filter_by(id=bike_id, user_id=user_id).first()
             if not bike:
                 return {'success': False, 'error': 'Bike not found or not owned by user'}
             
-            # Only allow updating certain fields
-            allowed_fields = ['color', 'insurance_expiry', 'rc_expiry']
-            
-            for field in allowed_fields:
-                if field in update_data:
-                    if field.endswith('_expiry') and update_data[field]:
-                        try:
-                            # Parse date string to datetime
-                            expiry_date = datetime.strptime(update_data[field], '%Y-%m-%d').date()
-                            setattr(bike, field, expiry_date)
-                        except ValueError:
-                            return {'success': False, 'error': f'Invalid date format for {field}. Use YYYY-MM-DD'}
-                    else:
-                        setattr(bike, field, update_data[field])
+            # Updatable vehicle fields
+            if 'brand' in update_data and update_data['brand']:
+                bike.brand = update_data['brand'].strip()
+            if 'model' in update_data and update_data['model']:
+                bike.model = update_data['model'].strip()
+            if 'bike_type' in update_data and update_data['bike_type']:
+                bike.bike_type = update_data['bike_type'].strip()
+            if 'color' in update_data:
+                bike.color = update_data['color'].strip() if update_data['color'] else None
+            if 'bike_number' in update_data and update_data['bike_number']:
+                bike.bike_number = update_data['bike_number'].strip().upper()
+                
+            # Document details
+            docs_updated = False
+            if 'rc_number' in update_data:
+                bike.rc_number = update_data['rc_number'].strip() if update_data['rc_number'] else None
+                docs_updated = True
+            if 'rc_image_url' in update_data:
+                bike.rc_image_url = update_data['rc_image_url'].strip() if update_data['rc_image_url'] else None
+                docs_updated = True
+            if 'insurance_number' in update_data:
+                bike.insurance_number = update_data['insurance_number'].strip() if update_data['insurance_number'] else None
+                docs_updated = True
+
+            # Insurance validity check
+            if 'insurance_valid_till' in update_data and update_data['insurance_valid_till']:
+                try:
+                    ins_date = datetime.strptime(update_data['insurance_valid_till'], '%Y-%m-%d').date()
+                    min_ins_date = date.today() + timedelta(days=30)
+                    if ins_date <= min_ins_date:
+                        return {
+                            'success': False,
+                            'error': f'Insurance expiry date must be greater than 30 days from today (minimum valid date: {min_ins_date.isoformat()}).'
+                        }
+                    bike.insurance_valid_till = ins_date
+                    docs_updated = True
+                except ValueError:
+                    return {'success': False, 'error': 'Invalid insurance_valid_till format. Use YYYY-MM-DD'}
+
+            if docs_updated:
+                # Reset verification status so admin can verify the updated documents
+                bike.verification_status = 'pending'
+                bike.is_verified = False
+                bike.rejection_reason = None
             
             db.session.commit()
             
             return {
                 'success': True,
-                'message': 'Bike updated successfully',
+                'message': 'Vehicle information updated successfully and submitted for admin review.',
                 'bike': bike.to_dict()
             }
             
@@ -255,7 +286,7 @@ class BikeService:
             db.session.rollback()
             return {
                 'success': False,
-                'error': f'Failed to update bike: {str(e)}'
+                'error': f'Failed to update vehicle: {str(e)}'
             }
     
     @staticmethod

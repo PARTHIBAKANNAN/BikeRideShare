@@ -28,6 +28,20 @@ export default function BikeManager({ currentUser, onProfileUpdated }) {
   const [showDLModal, setShowDLModal] = useState(false);
   const [msg, setMsg] = useState({ type: '', text: '' });
 
+  // Update Bike State
+  const [editingBike, setEditingBike] = useState(null);
+  const [editForm, setEditForm] = useState({
+    brand: '',
+    model: '',
+    bike_type: 'motorcycle',
+    bike_number: '',
+    color: '',
+    rc_number: '',
+    rc_image_url: '',
+    insurance_number: '',
+    insurance_valid_till: ''
+  });
+
   // DL Form State
   const [licenseNumber, setLicenseNumber] = useState(currentUser?.license_number || '');
   const [licenseExpiryDate, setLicenseExpiryDate] = useState(currentUser?.license_expiry_date || '');
@@ -144,6 +158,44 @@ export default function BikeManager({ currentUser, onProfileUpdated }) {
       }
     } catch (err) {
       setMsg({ type: 'error', text: err.response?.data?.error || 'Failed to submit DL.' });
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleOpenEditModal = (bike) => {
+    setEditingBike(bike);
+    setEditForm({
+      brand: bike.brand || '',
+      model: bike.model || '',
+      bike_type: bike.bike_type || 'motorcycle',
+      bike_number: bike.bike_number || '',
+      color: bike.color || '',
+      rc_number: bike.rc_number || '',
+      rc_image_url: bike.rc_image_url || '',
+      insurance_number: bike.insurance_number || '',
+      insurance_valid_till: bike.insurance_valid_till || ''
+    });
+  };
+
+  const handleUpdateBike = async (e) => {
+    e.preventDefault();
+    if (!editingBike) return;
+    setActionLoading(true);
+    setMsg({ type: '', text: '' });
+    try {
+      const res = await bikeAPI.updateBike(editingBike.id, editForm);
+      if (res.data && res.data.success) {
+        confetti({ particleCount: 70, spread: 60 });
+        setMsg({ type: 'success', text: 'Vehicle information updated successfully and submitted for admin review!' });
+        setEditingBike(null);
+        fetchBikes();
+        if (onProfileUpdated) onProfileUpdated();
+      }
+    } catch (err) {
+      const errList = err.response?.data?.errors;
+      const errMsg = Array.isArray(errList) ? errList.join(', ') : (err.response?.data?.error || err.message);
+      setMsg({ type: 'error', text: errMsg });
     } finally {
       setActionLoading(false);
     }
@@ -388,10 +440,34 @@ export default function BikeManager({ currentUser, onProfileUpdated }) {
 
       {/* REGISTERED VEHICLES LIST */}
       <div className="space-y-3">
-        <h3 className="text-base font-bold text-white font-outfit flex items-center gap-2">
-          <Layers className="w-4 h-4 text-cyan-400" />
-          <span>My Registered Two-Wheelers ({bikes.length})</span>
-        </h3>
+        <div className="flex items-center justify-between">
+          <h3 className="text-base font-bold text-white font-outfit flex items-center gap-2">
+            <Layers className="w-4 h-4 text-cyan-400" />
+            <span>My Registered Two-Wheelers ({bikes.length})</span>
+          </h3>
+
+          {bikes.length > 0 && (
+            <button
+              onClick={() => setShowAddBike(true)}
+              className="px-3 py-1.5 bg-emerald-600/30 hover:bg-emerald-600/50 text-emerald-300 border border-emerald-500/40 text-xs font-bold rounded-xl transition-all inline-flex items-center gap-1.5"
+            >
+              <Plus className="w-3.5 h-3.5" /> Add Another Bike
+            </button>
+          )}
+        </div>
+
+        {/* MULTIPLE VEHICLES ACTIVE GUIDANCE BANNER */}
+        {bikes.length > 1 && (
+          <div className="p-3.5 rounded-2xl bg-cyan-500/10 border border-cyan-500/30 text-cyan-300 text-xs flex items-start gap-2.5">
+            <Sparkles className="w-4 h-4 text-cyan-400 shrink-0 mt-0.5" />
+            <div className="space-y-0.5">
+              <span className="font-bold text-white">Active Vehicle Allocation:</span>
+              <p className="text-[11px] text-cyan-200/90 leading-relaxed">
+                You have {bikes.length} bikes registered. Choose <strong>1 verified vehicle as your Active Bike</strong> below. When offering a ride, only your selected active bike will be used for commuter pickup and fare calculation.
+              </p>
+            </div>
+          </div>
+        )}
 
         {loading ? (
           <div className="p-8 text-center text-slate-400 text-xs">Loading registered vehicles...</div>
@@ -413,17 +489,28 @@ export default function BikeManager({ currentUser, onProfileUpdated }) {
               <div
                 key={b.id}
                 className={`p-5 rounded-3xl glass-panel border transition-all ${
-                  b.is_active ? 'border-emerald-500 shadow-lg shadow-emerald-500/10' : 'border-slate-800'
+                  b.is_active 
+                    ? 'border-emerald-500 shadow-xl shadow-emerald-500/15 bg-emerald-950/10' 
+                    : 'border-slate-800'
                 }`}
               >
                 <div className="flex items-start justify-between">
                   <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 rounded-2xl bg-slate-900 border border-slate-700 flex items-center justify-center text-emerald-400">
+                    <div className={`w-12 h-12 rounded-2xl border flex items-center justify-center ${
+                      b.is_active 
+                        ? 'bg-emerald-500/20 border-emerald-500/40 text-emerald-400' 
+                        : 'bg-slate-900 border-slate-700 text-slate-400'
+                    }`}>
                       <Bike className="w-6 h-6" />
                     </div>
                     <div>
-                      <div className="text-base font-bold text-white font-outfit">
-                        {b.brand} {b.model}
+                      <div className="text-base font-bold text-white font-outfit flex items-center gap-2">
+                        <span>{b.brand} {b.model}</span>
+                        {b.is_active && (
+                          <span className="px-2 py-0.5 rounded-md bg-emerald-500 text-slate-950 font-extrabold text-[9px] uppercase tracking-wider">
+                            Active
+                          </span>
+                        )}
                       </div>
                       <div className="text-xs font-mono font-extrabold text-emerald-400 tracking-wider">
                         {b.bike_number}
@@ -463,24 +550,34 @@ export default function BikeManager({ currentUser, onProfileUpdated }) {
                   </div>
                 </div>
 
-                {/* Active Switcher */}
-                <div className="mt-4 flex items-center justify-between pt-2 border-t border-slate-800/50">
-                  {b.is_active ? (
-                    <span className="text-xs font-bold text-emerald-400 flex items-center gap-1">
-                      <CheckCircle2 className="w-4 h-4" /> Active Ride Vehicle
-                    </span>
-                  ) : b.is_verified ? (
-                    <button
-                      onClick={() => handleSetActiveBike(b.id)}
-                      className="text-xs font-bold text-emerald-400 hover:text-emerald-300 underline"
-                    >
-                      Set as Active Bike
-                    </button>
-                  ) : (
-                    <span className="text-[11px] text-slate-500 italic">
-                      {b.verification_status === 'rejected' ? 'Action: Re-register with valid documents' : 'Awaiting Admin Verification'}
-                    </span>
-                  )}
+                {/* Active Switcher & Edit Actions */}
+                <div className="mt-4 flex items-center justify-between pt-3 border-t border-slate-800/50">
+                  <div>
+                    {b.is_active ? (
+                      <span className="text-xs font-extrabold text-emerald-400 flex items-center gap-1.5">
+                        <CheckCircle2 className="w-4 h-4" /> Active Ride Vehicle
+                      </span>
+                    ) : b.is_verified ? (
+                      <button
+                        onClick={() => handleSetActiveBike(b.id)}
+                        className="px-3 py-1 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40 text-xs font-bold transition-all"
+                      >
+                        Set as Active Bike ➔
+                      </button>
+                    ) : (
+                      <span className="text-[11px] text-slate-500 italic">
+                        {b.verification_status === 'rejected' ? 'Action: Update document to re-verify' : 'Awaiting Admin Approval'}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Update Vehicle Info Button */}
+                  <button
+                    onClick={() => handleOpenEditModal(b)}
+                    className="px-3 py-1 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 text-xs font-bold flex items-center gap-1 transition-colors"
+                  >
+                    <span>✏️ Update Info</span>
+                  </button>
                 </div>
               </div>
             ))}
@@ -725,6 +822,167 @@ export default function BikeManager({ currentUser, onProfileUpdated }) {
                 className="w-full py-3.5 bg-gradient-to-r from-emerald-500 to-teal-500 text-slate-950 font-extrabold text-xs rounded-xl shadow-lg hover:brightness-110 transition-all disabled:opacity-50"
               >
                 {actionLoading ? 'Submitting DL...' : 'Submit DL for Approval'}
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* UPDATE VEHICLE INFORMATION MODAL */}
+      {editingBike && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-md overflow-y-auto">
+          <div className="glass-modal w-full max-w-xl rounded-3xl p-6 border border-slate-700 shadow-2xl space-y-4 my-8">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+              <div className="flex items-center gap-2">
+                <Bike className="w-5 h-5 text-cyan-400" />
+                <div>
+                  <h3 className="text-lg font-bold text-white font-outfit">Update Vehicle Information</h3>
+                  <p className="text-[11px] text-slate-400">Update details, RC number or insurance renewal for {editingBike.bike_number}</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setEditingBike(null)}
+                className="text-slate-400 hover:text-white font-bold text-sm"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleUpdateBike} className="space-y-4">
+              {/* Brand & Model */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-slate-300 mb-1">Make / Brand</label>
+                  <input
+                    type="text"
+                    required
+                    value={editForm.brand}
+                    onChange={(e) => setEditForm({ ...editForm, brand: e.target.value })}
+                    className="w-full bg-slate-900 border border-slate-700 text-white text-xs rounded-xl p-3 focus:border-cyan-500 focus:outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-300 mb-1">Model Name</label>
+                  <input
+                    type="text"
+                    required
+                    value={editForm.model}
+                    onChange={(e) => setEditForm({ ...editForm, model: e.target.value })}
+                    className="w-full bg-slate-900 border border-slate-700 text-white text-xs rounded-xl p-3 focus:border-cyan-500 focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              {/* Vehicle Number & Category */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-slate-300 mb-1">Vehicle Registration Plate</label>
+                  <input
+                    type="text"
+                    required
+                    value={editForm.bike_number}
+                    onChange={(e) => setEditForm({ ...editForm, bike_number: e.target.value })}
+                    className="w-full bg-slate-900 border border-slate-700 text-white text-xs rounded-xl p-3 focus:border-cyan-500 focus:outline-none font-mono uppercase"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-300 mb-1">Vehicle Category</label>
+                  <select
+                    value={editForm.bike_type}
+                    onChange={(e) => setEditForm({ ...editForm, bike_type: e.target.value })}
+                    className="w-full bg-slate-900 border border-slate-700 text-white text-xs rounded-xl p-3 focus:border-cyan-500 focus:outline-none capitalize"
+                  >
+                    <option value="motorcycle">Motorcycle / Standard Bike</option>
+                    <option value="scooter">Scooter (Activa, Jupiter, etc.)</option>
+                    <option value="ev">Electric Scooter / EV (Ather, Ola, Chetak)</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Color */}
+              <div>
+                <label className="block text-xs font-bold text-slate-300 mb-1">Vehicle Color</label>
+                <input
+                  type="text"
+                  placeholder="e.g. Dapper Grey, Midnight Black"
+                  value={editForm.color}
+                  onChange={(e) => setEditForm({ ...editForm, color: e.target.value })}
+                  className="w-full bg-slate-900 border border-slate-700 text-white text-xs rounded-xl p-3 focus:border-cyan-500 focus:outline-none"
+                />
+              </div>
+
+              {/* RC Number & Document Image */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-slate-300 mb-1">RC Book Number</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. RC-TN09-2023-8899"
+                    value={editForm.rc_number}
+                    onChange={(e) => setEditForm({ ...editForm, rc_number: e.target.value })}
+                    className="w-full bg-slate-900 border border-slate-700 text-white text-xs rounded-xl p-3 focus:border-cyan-500 focus:outline-none font-mono"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-300 mb-1">RC Document Photo / URL</label>
+                  <input
+                    type="url"
+                    placeholder="https://.../rc_photo.jpg"
+                    value={editForm.rc_image_url}
+                    onChange={(e) => setEditForm({ ...editForm, rc_image_url: e.target.value })}
+                    className="w-full bg-slate-900 border border-slate-700 text-white text-xs rounded-xl p-3 focus:border-cyan-500 focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              {/* Insurance Number & Valid Till */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-slate-300 mb-1">Insurance Policy Number</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. POL-88992211"
+                    value={editForm.insurance_number}
+                    onChange={(e) => setEditForm({ ...editForm, insurance_number: e.target.value })}
+                    className="w-full bg-slate-900 border border-slate-700 text-white text-xs rounded-xl p-3 focus:border-cyan-500 focus:outline-none font-mono"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-300 mb-1">
+                    Insurance Expiry Date <span className="text-amber-400 text-[10px]">(Must be &gt;30 days)</span>
+                  </label>
+                  <input
+                    type="date"
+                    required
+                    min={(() => {
+                      const d = new Date();
+                      d.setDate(d.getDate() + 31);
+                      return d.toISOString().split('T')[0];
+                    })()}
+                    value={editForm.insurance_valid_till}
+                    onChange={(e) => setEditForm({ ...editForm, insurance_valid_till: e.target.value })}
+                    className="w-full bg-slate-900 border border-slate-700 text-white text-xs rounded-xl p-3 focus:border-cyan-500 focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              <div className="p-3 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-[11px] text-amber-300 flex items-start gap-2">
+                <AlertCircle className="w-4 h-4 shrink-0 text-amber-400 mt-0.5" />
+                <span>Updating document details will re-submit this vehicle for admin verification. Insurance must have &gt;30 days future validity.</span>
+              </div>
+
+              <button
+                type="submit"
+                disabled={actionLoading}
+                className="w-full py-3.5 bg-gradient-to-r from-cyan-500 to-teal-500 text-slate-950 font-extrabold text-xs rounded-xl shadow-lg hover:brightness-110 transition-all disabled:opacity-50 mt-2"
+              >
+                {actionLoading ? 'Updating Vehicle...' : 'Save & Submit Vehicle Updates'}
               </button>
             </form>
           </div>

@@ -134,7 +134,14 @@ export default function LocationAutocomplete({
   };
 
   const getIcon = (type) => {
+    if (type === 'metro') return <Train className="w-4 h-4 text-emerald-400" />;
+    if (type === 'train') return <Train className="w-4 h-4 text-blue-400" />;
+    if (type === 'bus') return <Navigation className="w-4 h-4 text-amber-400" />;
     if (type === 'it_park') return <Building className="w-4 h-4 text-cyan-400" />;
+    if (type === 'tourist') return <Sparkles className="w-4 h-4 text-pink-400" />;
+    if (type === 'hospital') return <Building className="w-4 h-4 text-rose-400" />;
+    if (type === 'theatre' || type === 'commercial') return <Sparkles className="w-4 h-4 text-purple-400" />;
+    if (type === 'college') return <Building className="w-4 h-4 text-indigo-400" />;
     if (type === 'transit') return <Train className="w-4 h-4 text-purple-400" />;
     if (type === 'gps') return <Crosshair className="w-4 h-4 text-emerald-400 animate-pulse" />;
     return <MapPin className="w-4 h-4 text-emerald-400" />;
@@ -252,9 +259,35 @@ export default function LocationAutocomplete({
 
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between gap-2">
-                    <span className="font-bold text-white group-hover:text-emerald-400 transition-colors truncate">
-                      {loc.name}
-                    </span>
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <span className="font-bold text-white group-hover:text-emerald-400 transition-colors truncate">
+                        {loc.name}
+                      </span>
+                      {loc.type === 'metro' && (
+                        <span className="px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-300 text-[9px] font-bold border border-emerald-500/30 shrink-0">Metro</span>
+                      )}
+                      {loc.type === 'train' && (
+                        <span className="px-1.5 py-0.2 rounded bg-blue-500/20 text-blue-300 text-[9px] font-bold border border-blue-500/30 shrink-0">Local Train</span>
+                      )}
+                      {loc.type === 'bus' && (
+                        <span className="px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-300 text-[9px] font-bold border border-amber-500/30 shrink-0">Bus Depot</span>
+                      )}
+                      {loc.type === 'it_park' && (
+                        <span className="px-1.5 py-0.2 rounded bg-cyan-500/20 text-cyan-300 text-[9px] font-bold border border-cyan-500/30 shrink-0">IT Hub</span>
+                      )}
+                      {loc.type === 'tourist' && (
+                        <span className="px-1.5 py-0.2 rounded bg-pink-500/20 text-pink-300 text-[9px] font-bold border border-pink-500/30 shrink-0">Attraction</span>
+                      )}
+                      {(loc.type === 'theatre' || loc.type === 'commercial') && (
+                        <span className="px-1.5 py-0.2 rounded bg-purple-500/20 text-purple-300 text-[9px] font-bold border border-purple-500/30 shrink-0">Theatre / Mall</span>
+                      )}
+                      {loc.type === 'hospital' && (
+                        <span className="px-1.5 py-0.2 rounded bg-rose-500/20 text-rose-300 text-[9px] font-bold border border-rose-500/30 shrink-0">Hospital</span>
+                      )}
+                      {loc.type === 'college' && (
+                        <span className="px-1.5 py-0.2 rounded bg-indigo-500/20 text-indigo-300 text-[9px] font-bold border border-indigo-500/30 shrink-0">University</span>
+                      )}
+                    </div>
                     {loc.pincode && (
                       <span className="px-2 py-0.5 rounded-md bg-slate-800 text-emerald-300 font-mono text-[10px] shrink-0 border border-slate-700 font-bold">
                         PIN: {loc.pincode}

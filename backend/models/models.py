@@ -261,6 +261,15 @@ class Ride(db.Model):
             'id': self.id,
             'user_id': self.rider_id,  # Add user_id for ownership check
             'rider_id': self.rider_id,  # Add rider_id for clarity
+            'from_location': self.from_location,
+            'to_location': self.to_location,
+            'departure_date': self.departure_date.isoformat() if self.departure_date else None,
+            'departure_time': self.departure_time.strftime('%H:%M') if self.departure_time else None,
+            'cost_per_person': self.cost_per_person,
+            'available_seats': self.available_seats,
+            'current_passengers': self.current_passengers,
+            'status': self.status,
+            'is_pink_ride': self.is_pink_ride,
             'rider': {
                 'id': self.rider.id,
                 'name': self.rider.name,

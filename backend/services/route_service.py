@@ -282,6 +282,102 @@ class RouteService:
         'Chennai International Airport (MAA)': {
             'lat': 12.9800, 'lng': 80.1630, 'area': 'Meenambakkam', 'pincode': '600027',
             'address': 'GST Road, Meenambakkam, Chennai - 600027', 'type': 'transit'
+        },
+
+        # --- Theatres, Malls & Entertainment Hubs ---
+        'Kamala Theatre, Vadapalani': {
+            'lat': 13.0515, 'lng': 80.2130, 'area': 'Vadapalani', 'pincode': '600026',
+            'address': 'No. 138, Arcot Road, Vadapalani, Chennai - 600026', 'type': 'theatre'
+        },
+        'Udhayam Complex / Theatre (Ashok Nagar)': {
+            'lat': 13.0335, 'lng': 80.2110, 'area': 'Ashok Nagar', 'pincode': '600083',
+            'address': '100 Feet Road / 1st Avenue, Ashok Nagar, Chennai - 600083', 'type': 'theatre'
+        },
+        'Rohini Silver Screens (Koyambedu)': {
+            'lat': 13.0720, 'lng': 80.1980, 'area': 'Koyambedu', 'pincode': '600107',
+            'address': 'No. 141, Poonamallee High Road, Koyambedu, Chennai - 600107', 'type': 'theatre'
+        },
+        'Kasi Theatre (Jafferkhanpet)': {
+            'lat': 13.0245, 'lng': 80.2085, 'area': 'Jafferkhanpet / Ekkatuthangal', 'pincode': '600083',
+            'address': 'No. 4, Pillaiyar Koil Street, Jafferkhanpet, Chennai - 600083', 'type': 'theatre'
+        },
+        'AGS Cinemas (OMR Navalur)': {
+            'lat': 12.8460, 'lng': 80.2260, 'area': 'Navalur / OMR', 'pincode': '603103',
+            'address': 'Rajiv Gandhi Salai (OMR), Navalur, Chennai - 603103', 'type': 'theatre'
+        },
+        'Phoenix MarketCity / Palladium (Velachery)': {
+            'lat': 12.9918, 'lng': 80.2170, 'area': 'Velachery', 'pincode': '600042',
+            'address': 'No. 142, Velachery Main Road, Velachery, Chennai - 600042', 'type': 'commercial'
+        },
+        'VR Chennai Mall (Thirumangalam)': {
+            'lat': 13.0880, 'lng': 80.1930, 'area': 'Anna Nagar West', 'pincode': '600040',
+            'address': 'Jawaharlal Nehru Road, Thirumangalam, Anna Nagar, Chennai - 600040', 'type': 'commercial'
+        },
+        'Nexus Vijaya Mall / Palazzo (Vadapalani)': {
+            'lat': 13.0500, 'lng': 80.2121, 'area': 'Vadapalani', 'pincode': '600026',
+            'address': 'Arcot Road, Vadapalani, Chennai - 600026', 'type': 'commercial'
+        },
+        'Express Avenue Mall (Royapettah)': {
+            'lat': 13.0590, 'lng': 80.2640, 'area': 'Royapettah', 'pincode': '600014',
+            'address': 'Club House Road, Royapettah, Chennai - 600014', 'type': 'commercial'
+        },
+
+        # --- Hospitals, Colleges & Major Transit Nodes ---
+        'MIOT International Hospital (Manapakkam)': {
+            'lat': 13.0240, 'lng': 80.1760, 'area': 'Manapakkam', 'pincode': '600089',
+            'address': '4/112, Mount Poonamallee Road, Manapakkam, Chennai - 600089', 'type': 'hospital'
+        },
+        'SIMS Hospital (Vadapalani)': {
+            'lat': 13.0520, 'lng': 80.2110, 'area': 'Vadapalani', 'pincode': '600026',
+            'address': 'Jawaharlal Nehru Salai, Vadapalani, Chennai - 600026', 'type': 'hospital'
+        },
+        'Sri Ramachandra Hospital (Porur)': {
+            'lat': 13.0370, 'lng': 80.1430, 'area': 'Porur', 'pincode': '600116',
+            'address': 'No. 1, Ramachandra Nagar, Porur, Chennai - 600116', 'type': 'hospital'
+        },
+        'Global Hospital (Perumbakkam)': {
+            'lat': 12.9050, 'lng': 80.1980, 'area': 'Perumbakkam', 'pincode': '600100',
+            'address': 'Cheran Nagar, Perumbakkam, Chennai - 600100', 'type': 'hospital'
+        },
+        'Anna University (Guindy / Sardar Patel Rd)': {
+            'lat': 13.0125, 'lng': 80.2355, 'area': 'Guindy', 'pincode': '600025',
+            'address': 'Sardar Patel Road, Guindy, Chennai - 600025', 'type': 'college'
+        },
+        'IIT Madras Main Gate (Adyar)': {
+            'lat': 13.0064, 'lng': 80.2425, 'area': 'Adyar / Guindy', 'pincode': '600036',
+            'address': 'Sardar Patel Road, Adyar, Chennai - 600036', 'type': 'college'
+        },
+        'SRP Tools / Taramani Link Road': {
+            'lat': 12.9820, 'lng': 80.2460, 'area': 'Taramani / OMR', 'pincode': '600041',
+            'address': 'Rajiv Gandhi Salai / Taramani Link Rd, Chennai - 600041', 'type': 'junction'
+        },
+        'St. Thomas Mount Metro Station': {
+            'lat': 12.9960, 'lng': 80.1980, 'area': 'St. Thomas Mount', 'pincode': '600016',
+            'address': 'GST Road, St. Thomas Mount, Chennai - 600016', 'type': 'transit'
+        },
+        'Guindy Railway Station / Race Course': {
+            'lat': 13.0080, 'lng': 80.2130, 'area': 'Guindy', 'pincode': '600032',
+            'address': 'Race Course Road, Guindy, Chennai - 600032', 'type': 'transit'
+        },
+        'Thirumangalam Metro Station': {
+            'lat': 13.0850, 'lng': 80.1920, 'area': 'Anna Nagar West', 'pincode': '600040',
+            'address': 'Inner Ring Road, Thirumangalam, Chennai - 600040', 'type': 'transit'
+        },
+        'Arumbakkam Metro Station': {
+            'lat': 13.0620, 'lng': 80.2110, 'area': 'Arumbakkam', 'pincode': '600106',
+            'address': '100 Feet Road, Arumbakkam, Chennai - 600106', 'type': 'transit'
+        },
+        'Koyambedu Metro Station': {
+            'lat': 13.0720, 'lng': 80.1950, 'area': 'Koyambedu', 'pincode': '600107',
+            'address': 'Inner Ring Road, Koyambedu, Chennai - 600107', 'type': 'transit'
+        },
+        'Camp Road Junction (Selaiyur)': {
+            'lat': 12.9150, 'lng': 80.1450, 'area': 'East Tambaram', 'pincode': '600073',
+            'address': 'Velachery Main Rd / Camp Rd, Selaiyur, Chennai - 600073', 'type': 'junction'
+        },
+        'Sholinganallur Wipro Junction': {
+            'lat': 12.9020, 'lng': 80.2280, 'area': 'Sholinganallur', 'pincode': '600119',
+            'address': 'OMR - Medavakkam Link Road, Sholinganallur, Chennai - 600119', 'type': 'junction'
         }
     }
     
@@ -479,20 +575,18 @@ class RouteService:
         results = []
         q = query.strip().lower()
         
-        # 1. Search in curated Chennai Hubs
+        # 1. Search in curated Chennai Hubs (support multi-token match)
+        query_tokens = q.split() if q else []
+        
         for name, data in cls.CHENNAI_HUBS.items():
+            searchable_text = f"{name} {data.get('area', '')} {data.get('address', '')} {data.get('pincode', '')} {data.get('type', '')}".lower()
+            
             match = False
             if not q:
                 match = True
-            elif q in name.lower():
+            elif all(tok in searchable_text for tok in query_tokens):
                 match = True
-            elif q in data.get('area', '').lower():
-                match = True
-            elif q in data.get('address', '').lower():
-                match = True
-            elif data.get('pincode', '') and q in data.get('pincode', ''):
-                match = True
-            elif q in data.get('type', '').lower():
+            elif any(tok in searchable_text for tok in query_tokens) and len(query_tokens) > 1:
                 match = True
                 
             if match:
@@ -507,14 +601,14 @@ class RouteService:
                 })
         
         # 2. If query is longer and few local matches, perform live OSM Nominatim query
-        if len(q) >= 3 and len(results) < 5:
+        if len(q) >= 3 and len(results) < 8:
             try:
                 url = "https://nominatim.openstreetmap.org/search"
                 params = {
                     'q': f"{query}, Chennai",
                     'format': 'json',
                     'addressdetails': 1,
-                    'limit': 5,
+                    'limit': 10,
                     'countrycodes': 'in',
                     'viewbox': '79.8,13.4,80.4,12.7'
                 }
@@ -553,7 +647,7 @@ class RouteService:
             except Exception as e:
                 pass
 
-        return results[:15]
+        return results[:40]
 
     @classmethod
     def calculate_road_route(cls, from_location: str, to_location: str) -> Dict[str, Any]:
@@ -659,6 +753,78 @@ class RouteService:
             'min_pickup_dist_km': round(min_p_dist, 2),
             'min_drop_dist_km': round(min_d_dist, 2),
             'detour_mins': detour_mins
+        }
+
+    @classmethod
+    def calculate_corridor_match(cls, rider_from: str, rider_to: str, pax_from: str, pax_to: str) -> Dict[str, Any]:
+        """
+        Calculate corridor match score (0-100%), detour time, pickup suggestion, and compatibility
+        between a rider's route and a passenger's requested route.
+        """
+        r_from_clean = rider_from.strip().lower()
+        r_to_clean = rider_to.strip().lower()
+        p_from_clean = pax_from.strip().lower()
+        p_to_clean = pax_to.strip().lower()
+
+        # 1. Direct or substring match
+        if (r_from_clean == p_from_clean or p_from_clean in r_from_clean or r_from_clean in p_from_clean) and \
+           (r_to_clean == p_to_clean or p_to_clean in r_to_clean or r_to_clean in p_to_clean):
+            return {
+                'match_score': 98,
+                'match_type': 'exact_corridor',
+                'reasoning': f"Perfect match! Rider travels directly from {rider_from} to {rider_to}.",
+                'pickup_suggestion': f"Board directly at {pax_from}",
+                'detour_time': 0,
+                'compatibility': 'Perfect'
+            }
+
+        # 2. Get road coordinates for rider's route
+        rider_road = cls.calculate_road_route(rider_from, rider_to)
+        pax_pickup_coords = cls.get_coordinates(pax_from)
+        pax_drop_coords = cls.get_coordinates(pax_to)
+
+        if not pax_pickup_coords or not pax_drop_coords:
+            is_sub = (p_from_clean in r_from_clean or r_from_clean in p_from_clean)
+            return {
+                'match_score': 85 if is_sub else 60,
+                'match_type': 'corridor_overlap' if is_sub else 'approximate_corridor',
+                'reasoning': f"Commuter route along {rider_from} ➔ {rider_to} corridor.",
+                'pickup_suggestion': f"Meet at {pax_from} junction",
+                'detour_time': 2 if is_sub else 5,
+                'compatibility': 'High' if is_sub else 'Moderate'
+            }
+
+        coords = rider_road.get('coordinates', [])
+        overlap = cls.calculate_corridor_overlap(coords, pax_pickup_coords, pax_drop_coords)
+
+        pickup_dist = overlap['min_pickup_dist_km']
+        drop_dist = overlap['min_drop_dist_km']
+        detour = overlap['detour_mins']
+
+        if pickup_dist <= 1.2 and drop_dist <= 1.2:
+            score = 96 - int(detour * 1.5)
+            match_type = 'direct_corridor'
+            reasoning = f"Direct overlap! Rider passes right through {pax_from} on the way to {rider_to} ({detour} min detour)."
+        elif pickup_dist <= 2.5 and drop_dist <= 2.5:
+            score = 88 - int(detour * 2)
+            match_type = 'corridor_overlap'
+            reasoning = f"Corridor match! {pax_from} is along the {rider_from} ➔ {rider_to} route ({detour} min detour)."
+        elif pickup_dist <= 4.0 and drop_dist <= 4.0:
+            score = 72 - int(detour * 2)
+            match_type = 'nearby_corridor'
+            reasoning = f"Nearby corridor ({detour} min detour). Suggested pickup near {pax_from}."
+        else:
+            score = max(35, 60 - int((pickup_dist + drop_dist) * 3))
+            match_type = 'partial_corridor'
+            reasoning = f"Connecting commute route between {rider_from} and {rider_to}."
+
+        return {
+            'match_score': max(30, min(99, score)),
+            'match_type': match_type,
+            'reasoning': reasoning,
+            'pickup_suggestion': f"Board near {pax_from} main road junction",
+            'detour_time': detour,
+            'compatibility': 'High' if score >= 80 else 'Moderate' if score >= 60 else 'Fair'
         }
 
     @staticmethod

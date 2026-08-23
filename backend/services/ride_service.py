@@ -193,6 +193,22 @@ class RideService:
                 'error': 'Women-Only Pink Rides can only be offered by verified female riders.'
             }
 
+        # Check for overlapping rides by the same rider on the same date (±45 minutes)
+        existing_rides = Ride.query.filter_by(
+            rider_id=user_id,
+            departure_date=departure_date_obj,
+            status='active'
+        ).all()
+
+        for er in existing_rides:
+            t1_mins = er.departure_time.hour * 60 + er.departure_time.minute
+            t2_mins = departure_time_obj.hour * 60 + departure_time_obj.minute
+            if abs(t1_mins - t2_mins) < 45:
+                return {
+                    'success': False,
+                    'error': f"You already have an active ride scheduled at {er.departure_time.strftime('%H:%M')} ({er.from_location} ➔ {er.to_location}) on this date. Rides cannot overlap within a 45-minute window."
+                }
+
         # Create new ride
         try:
             new_ride = Ride(
@@ -295,13 +311,10 @@ class RideService:
             except (ValueError, TypeError):
                 return {'success': False, 'error': 'Invalid seats needed value'}
             
-            # Skip cost filter for AI analysis - let AI decide compatibility
-            # The AI will consider cost in its scoring
-            
             # Execute query to get available rides
             available_rides_query = base_query.order_by(Ride.departure_date, Ride.departure_time).all()
             
-            print(f"🔍 DEBUG: Found {len(available_rides_query)} rides after flexible filtering")
+            print(f"🔍 DEBUG: Found {len(available_rides_query)} rides in database before AI matching")
             
             # Convert to dictionaries for AI analysis
             available_rides = []
@@ -321,7 +334,7 @@ class RideService:
                 
                 available_rides.append(ride_dict)
             
-            # If no location filters provided, return all available rides (no AI analysis needed)
+            # If no location filters provided, return all available rides
             if not from_location and not to_location:
                 return {
                     'success': True,
@@ -331,7 +344,7 @@ class RideService:
                     'ai_powered': False
                 }
             
-            # Prepare search request for AI analysis
+            # Prepare search request for AI & corridor analysis
             search_request = {
                 'from_location': from_location,
                 'to_location': to_location,
@@ -340,48 +353,20 @@ class RideService:
                 'max_cost': max_cost
             }
 
-            # If Gemini key not configured, fallback to basic search
-            if not RideService.is_gemini_configured():
-                print("⚠️ Gemini API not configured, falling back to basic search")
-                filtered_rides = [
-                    r for r in available_rides 
-                    if (not from_location or from_location.lower() in r['route']['from_location'].lower()) and
-                       (not to_location or to_location.lower() in r['route']['to_location'].lower())
-                ]
-                return {
-                    'success': True,
-                    'rides': filtered_rides,
-                    'total_rides': len(filtered_rides),
-                    'search_type': 'keyword_filtered',
-                    'ai_powered': False
-                }
+            # Run AI & Algorithmic Corridor Matching
+            matched_rides = ai_route_matcher.find_intelligent_matches(search_request, available_rides)
             
-            # Use Gemini AI for intelligent ride matching
-            try:
-                ai_results = RideService._analyze_rides_with_gemini(search_request, available_rides)
-                return {
-                    'success': True,
-                    'rides': ai_results.get('matched_rides', []),
-                    'total_rides': len(ai_results.get('matched_rides', [])),
-                    'ai_analysis': ai_results.get('analysis', ''),
-                    'search_type': 'ai_matched',
-                    'ai_powered': True
-                }
-            except Exception as e:
-                print(f"❌ AI search failed, falling back: {str(e)}")
-                # Fallback to broad location matching if AI fails
-                filtered_rides = [
-                    r for r in available_rides 
-                    if (not from_location or from_location.lower() in r['route']['from_location'].lower()) and
-                       (not to_location or to_location.lower() in r['route']['to_location'].lower())
-                ]
-                return {
-                    'success': True,
-                    'rides': filtered_rides,
-                    'total_rides': len(filtered_rides),
-                    'search_type': 'keyword_fallback',
-                    'ai_powered': False
-                }
+            # Filter out rides with extremely low compatibility (< 25)
+            filtered_matches = [r for r in matched_rides if r.get('ai_match_score', 0) >= 25] if matched_rides else []
+            final_rides = filtered_matches if len(filtered_matches) > 0 else matched_rides
+
+            return {
+                'success': True,
+                'rides': final_rides,
+                'total_rides': len(final_rides),
+                'search_type': 'ai_corridor_matched',
+                'ai_powered': True
+            }
                 
         except Exception as e:
             return {'success': False, 'error': f'Failed to search rides: {str(e)}'}

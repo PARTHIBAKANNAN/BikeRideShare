@@ -548,27 +548,52 @@ export default function CommuteDashboard({ currentUser, onOpenPostRide }) {
               </button>
             </div>
           ) : (
-            offeredRides.map((ride) => (
-              <div key={ride.id} className="p-4 rounded-2xl glass-panel border border-slate-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-                <div>
-                  <div className="text-sm font-bold text-white flex items-center gap-2">
-                    <span>{ride.from_location} ➔ {ride.to_location}</span>
-                    <span className="text-[10px] bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded-full font-bold">
-                      {ride.status || 'Active'}
+            offeredRides.map((ride) => {
+              const fromLoc = ride.from_location || ride.route?.from_location || 'Pickup Spot';
+              const toLoc = ride.to_location || ride.route?.to_location || 'Destination Tech Park';
+              const depTime = ride.departure_time || ride.timing?.departure_time || '08:30';
+              const depDate = ride.departure_date || ride.timing?.departure_date || 'Today';
+              const fare = ride.cost_per_person || ride.booking?.cost_per_person || 0;
+              const seats = ride.available_seats || ride.booking?.available_seats || 1;
+              const passengers = ride.current_passengers ?? ride.booking?.current_passengers ?? 0;
+              const isPink = ride.is_pink_ride || ride.booking?.is_pink_ride;
+              const status = ride.status || ride.details?.status || 'active';
+
+              return (
+                <div key={ride.id} className="p-4 rounded-2xl glass-panel border border-slate-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 hover:border-emerald-500/40 transition-all">
+                  <div className="space-y-1">
+                    <div className="text-sm font-bold text-white flex items-center gap-2 flex-wrap">
+                      <span className="text-emerald-400 font-semibold">{fromLoc}</span>
+                      <span className="text-slate-500 font-mono">➔</span>
+                      <span className="text-emerald-300 font-semibold">{toLoc}</span>
+                      <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider ${
+                        status === 'active' ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' : 'bg-slate-800 text-slate-400'
+                      }`}>
+                        {status}
+                      </span>
+                      {isPink && (
+                        <span className="text-[10px] bg-pink-500/20 text-pink-300 border border-pink-500/30 px-2 py-0.5 rounded-full font-bold">
+                          🌸 Pink Pool
+                        </span>
+                      )}
+                    </div>
+                    <div className="text-xs text-slate-400 flex items-center gap-3 flex-wrap">
+                      <span>🕒 {depTime} ({depDate})</span>
+                      <span>•</span>
+                      <span className="text-emerald-400 font-bold font-mono">₹{fare}</span>
+                      <span>•</span>
+                      <span>{seats} seats available</span>
+                    </div>
+                  </div>
+
+                  <div className="text-right flex items-center gap-2">
+                    <span className="text-xs font-bold text-emerald-400 font-mono px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-800">
+                      {passengers} / {seats} Passengers
                     </span>
                   </div>
-                  <div className="text-xs text-slate-400 mt-1">
-                    🕒 {ride.departure_time} ({ride.departure_date}) • ₹{ride.cost_per_person} • {ride.available_seats} seats left
-                  </div>
                 </div>
-
-                <div className="text-right flex items-center gap-2">
-                  <span className="text-xs font-bold text-emerald-400 font-mono">
-                    {ride.current_passengers || 0} / {ride.available_seats || 1} Passengers
-                  </span>
-                </div>
-              </div>
-            ))
+              );
+            })
           )}
         </div>
       )}

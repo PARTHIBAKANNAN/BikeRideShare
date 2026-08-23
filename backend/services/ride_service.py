@@ -267,8 +267,8 @@ class RideService:
             if user_id:
                 base_query = base_query.filter(Ride.rider_id != user_id)
             
-            # Pink Ride Filter
-            if search_params.get('is_pink_ride') or search_params.get('pink_ride_only'):
+            # Pink Ride Filter (Only filter if specifically requested)
+            if search_data.get('is_pink_ride') or search_data.get('pink_ride_only'):
                 base_query = base_query.filter(Ride.is_pink_ride == True)
             
             # Apply flexible date filter for AI search (±3 days from requested date)

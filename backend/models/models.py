@@ -17,7 +17,10 @@ class User(db.Model):
     
     # Profile Information
     profile_image_url = db.Column(db.String(255), nullable=True)
+    avatar = db.Column(db.String(50), default='avatar-1')
     gender = db.Column(db.String(20), default='prefer_not_to_say')  # female/male/other/prefer_not_to_say
+    aadhaar_number = db.Column(db.String(12), nullable=True)  # 12-digit number (immutable)
+    date_of_birth = db.Column(db.Date, nullable=True)  # Date of birth (immutable)
     work_location = db.Column(db.String(100), nullable=False)
     home_location = db.Column(db.String(100), nullable=False)
     preferred_departure_time = db.Column(db.Time, nullable=True)
@@ -73,11 +76,27 @@ class User(db.Model):
     
     def to_dict(self):
         """Convert to dictionary for API responses"""
+        today = datetime.utcnow().date()
+        is_birthday = False
+        if self.date_of_birth:
+            is_birthday = (self.date_of_birth.month == today.month and self.date_of_birth.day == today.day)
+
         return {
             'id': self.id,
             'name': self.name,
             'phone': self.phone,
             'email': self.email,
+            'avatar': self.avatar or 'avatar-1',
+            'profile_image_url': self.profile_image_url,
+            'gender': self.gender or 'prefer_not_to_say',
+            'aadhaar_number': self.aadhaar_number,
+            'date_of_birth': self.date_of_birth.isoformat() if self.date_of_birth else None,
+            'is_birthday_today': is_birthday,
+            'birthday_offer': {
+                'title': '🎂 Birthday Special 50% Commute Discount!',
+                'discount_percent': 50,
+                'message': f"Happy Birthday, {self.name}! Enjoy 50% off on all your Chennai bike pooling rides today!"
+            } if is_birthday else None,
             'work_location': self.work_location,
             'home_location': self.home_location,
             'preferred_departure_time': self.preferred_departure_time.strftime('%H:%M') if self.preferred_departure_time else None,
@@ -94,6 +113,7 @@ class User(db.Model):
             'total_rides_offered': self.total_rides_offered,
             'total_rides_taken': self.total_rides_taken,
             'is_active': self.is_active,
+            'is_blacklisted': getattr(self, 'is_blacklisted', False),
             'is_flagged': self.is_flagged,
             'flag_reason': self.flag_reason,
             'flagged_at': self.flagged_at.isoformat() if self.flagged_at else None,

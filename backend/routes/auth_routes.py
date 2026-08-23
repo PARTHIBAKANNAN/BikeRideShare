@@ -14,7 +14,10 @@ user_registration_model = auth_ns.model('UserRegistration', {
     'phone': fields.String(required=True, description='Phone number with country code', example='+919876543210'),
     'email': fields.String(description='Email address (optional)', example='ravi@gmail.com'),
     'gender': fields.String(description='Gender (female/male/other/prefer_not_to_say)', example='female'),
-    'password': fields.String(required=True, description='Password (min 8 chars, uppercase, lowercase, digit, special char)', example='SecurePass123!'),
+    'aadhaar_number': fields.String(required=True, description='12-digit Aadhaar number (immutable)', example='123456789012'),
+    'date_of_birth': fields.String(description='Date of birth (YYYY-MM-DD)', example='1998-05-15'),
+    'avatar': fields.String(description='Avatar identifier', example='avatar-1'),
+    'password': fields.String(required=True, description='Password (min 6 chars)', example='SecurePass123!'),
     'work_location': fields.String(required=True, description='Work location in Chennai', example='Sholinganallur'),
     'home_location': fields.String(required=True, description='Home location in Chennai', example='Tambaram')
 })
@@ -26,6 +29,9 @@ user_login_model = auth_ns.model('UserLogin', {
 
 user_profile_update_model = auth_ns.model('UserProfileUpdate', {
     'name': fields.String(description='Full name'),
+    'phone': fields.String(description='Phone number'),
+    'email': fields.String(description='Email address'),
+    'avatar': fields.String(description='Avatar identifier'),
     'gender': fields.String(description='Gender'),
     'work_location': fields.String(description='Work location'),
     'home_location': fields.String(description='Home location'),
@@ -350,6 +356,46 @@ class VerificationStatus(Resource):
                 
         except Exception as e:
             return {'success': False, 'error': f'Failed to get verification status: {str(e)}'}, 500
+
+@auth_ns.route('/profile')
+class UserProfile(Resource):
+    @auth_ns.doc('get_user_profile', security='Bearer')
+    @auth_ns.response(200, '✅ Profile retrieved successfully')
+    @auth_ns.response(401, '❌ Authentication required')
+    @jwt_required()
+    def get(self):
+        """Get current user's profile"""
+        try:
+            current_user_id = get_jwt_identity()
+            user = User.query.get(current_user_id)
+            if not user or not user.is_active:
+                return {'success': False, 'error': 'User not found or inactive'}, 404
+            
+            return {
+                'success': True,
+                'user': user.to_dict()
+            }, 200
+        except Exception as e:
+            return {'success': False, 'error': f'Failed to get profile: {str(e)}'}, 500
+
+    @auth_ns.doc('update_user_profile_main', security='Bearer')
+    @auth_ns.expect(profile_update_model)
+    @auth_ns.response(200, '✅ Profile updated successfully')
+    @auth_ns.response(400, '❌ Validation error')
+    @auth_ns.response(401, '❌ Authentication required')
+    @jwt_required()
+    def put(self):
+        """Update current user's profile"""
+        try:
+            current_user_id = get_jwt_identity()
+            data = request.get_json()
+            result = AuthService.update_profile(current_user_id, data)
+            if result['success']:
+                return result, 200
+            else:
+                return result, 400
+        except Exception as e:
+            return {'success': False, 'error': f'Profile update failed: {str(e)}'}, 500
 
 @auth_ns.route('/profile/update')
 class UpdateProfile(Resource):

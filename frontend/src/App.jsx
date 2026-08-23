@@ -7,26 +7,39 @@ import BikeManager from './components/Dashboard/BikeManager';
 import AdminPortal from './components/Admin/AdminPortal';
 import AuthModal from './components/Auth/AuthModal';
 import PostRideModal from './components/Rides/PostRideModal';
-import { Bike, Shield, Heart, Sparkles, Mail } from 'lucide-react';
+import EditProfileModal from './components/Profile/EditProfileModal';
+import { Bike, Shield, Heart, Sparkles, Mail, Cake, Gift } from 'lucide-react';
+import confetti from 'canvas-confetti';
 
 export default function App() {
   const [currentUser, setCurrentUser] = useState(null);
   const [activeTab, setActiveTab] = useState('search'); // search | dashboard | bikes | admin
   const [isAuthOpen, setIsAuthOpen] = useState(false);
   const [isPostRideOpen, setIsPostRideOpen] = useState(false);
+  const [isEditProfileOpen, setIsEditProfileOpen] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const savedUser = localStorage.getItem('user');
-    const token = localStorage.getItem('token');
+    // Read from sessionStorage first (fallback to localStorage)
+    const savedUser = sessionStorage.getItem('user') || localStorage.getItem('user');
+    const token = sessionStorage.getItem('token') || localStorage.getItem('token');
+    
     if (savedUser && token) {
       try {
-        setCurrentUser(JSON.parse(savedUser));
+        const parsed = JSON.parse(savedUser);
+        setCurrentUser(parsed);
+        // Sync to sessionStorage
+        sessionStorage.setItem('token', token);
+        sessionStorage.setItem('user', JSON.stringify(parsed));
+
         // Verify with backend
         authAPI.getProfile().then((res) => {
           if (res.data && res.data.user) {
             setCurrentUser(res.data.user);
-            localStorage.setItem('user', JSON.stringify(res.data.user));
+            sessionStorage.setItem('user', JSON.stringify(res.data.user));
+            if (res.data.user.is_birthday_today) {
+              confetti({ particleCount: 70, spread: 80, origin: { y: 0.3 } });
+            }
           }
         }).catch(() => {
           // Token expired
@@ -39,6 +52,8 @@ export default function App() {
   }, []);
 
   const handleLogout = () => {
+    sessionStorage.removeItem('token');
+    sessionStorage.removeItem('user');
     localStorage.removeItem('token');
     localStorage.removeItem('user');
     setCurrentUser(null);
@@ -47,6 +62,9 @@ export default function App() {
 
   const handleAuthSuccess = (user) => {
     setCurrentUser(user);
+    if (user?.is_birthday_today) {
+      confetti({ particleCount: 80, spread: 90, origin: { y: 0.4 } });
+    }
   };
 
   return (
@@ -59,8 +77,22 @@ export default function App() {
         setActiveTab={setActiveTab}
         onOpenAuth={() => setIsAuthOpen(true)}
         onOpenPostRide={() => setIsPostRideOpen(true)}
+        onOpenEditProfile={() => setIsEditProfileOpen(true)}
         onLogout={handleLogout}
       />
+
+      {/* Birthday Celebration Banner if user's birthday is today */}
+      {currentUser?.is_birthday_today && (
+        <div className="bg-gradient-to-r from-amber-500/20 via-pink-500/20 to-purple-500/20 border-b border-amber-500/30 py-2.5 px-4 text-center">
+          <div className="max-w-7xl mx-auto flex items-center justify-center gap-2.5 text-xs text-amber-200">
+            <Cake className="w-4 h-4 text-amber-400 animate-bounce" />
+            <span>
+              <strong>🎉 Happy Birthday, {currentUser.name}!</strong> Special Birthday Commute Offer Activated: Enjoy <strong className="text-white font-bold underline decoration-amber-400">50% OFF</strong> on all rides today!
+            </span>
+            <Gift className="w-4 h-4 text-pink-400" />
+          </div>
+        </div>
+      )}
 
       {/* Main Container View */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 pt-6 pb-12">
@@ -156,6 +188,16 @@ export default function App() {
         currentUser={currentUser}
         onRidePosted={() => {
           setActiveTab('search');
+        }}
+      />
+
+      {/* Edit Profile Modal */}
+      <EditProfileModal
+        isOpen={isEditProfileOpen}
+        onClose={() => setIsEditProfileOpen(false)}
+        currentUser={currentUser}
+        onProfileUpdated={(updatedUser) => {
+          setCurrentUser(updatedUser);
         }}
       />
 

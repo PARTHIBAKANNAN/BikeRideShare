@@ -78,8 +78,8 @@ class AuthService:
     def validate_email_address(email: str) -> dict:
         """Validate email address format"""
         try:
-            # Validate email
-            validated_email = validate_email(email)
+            # Validate email without strict DNS deliverability check to prevent false 400s
+            validated_email = validate_email(email, check_deliverability=False)
             return {
                 'valid': True,
                 'email': validated_email.email,
@@ -93,25 +93,13 @@ class AuthService:
         """Validate password strength"""
         errors = []
         
-        if len(password) < 8:
-            errors.append("Password must be at least 8 characters long")
-        
-        if not re.search(r"[A-Z]", password):
-            errors.append("Password must contain at least one uppercase letter")
-        
-        if not re.search(r"[a-z]", password):
-            errors.append("Password must contain at least one lowercase letter")
-        
-        if not re.search(r"\d", password):
-            errors.append("Password must contain at least one digit")
-        
-        if not re.search(r"[!@#$%^&*(),.?\":{}|<>]", password):
-            errors.append("Password must contain at least one special character")
+        if len(password) < 6:
+            errors.append("Password must be at least 6 characters long")
         
         return {
             'valid': len(errors) == 0,
             'errors': errors,
-            'strength': 'strong' if len(errors) == 0 else 'weak'
+            'strength': 'strong' if len(password) >= 8 and re.search(r"\d", password) else 'moderate'
         }
     
     @staticmethod
@@ -126,6 +114,9 @@ class AuthService:
         password = user_data.get('password', '')
         work_location = user_data.get('work_location', '').strip()
         home_location = user_data.get('home_location', '').strip()
+        aadhaar_raw = str(user_data.get('aadhaar_number', '')).strip().replace(' ', '').replace('-', '')
+        dob_raw = user_data.get('date_of_birth')
+        avatar = user_data.get('avatar', 'avatar-1')
         
         # Validation
         errors = []
@@ -142,7 +133,7 @@ class AuthService:
             formatted_phone = phone_validation['formatted_number']
             # Check if phone already exists
             if User.query.filter_by(phone=formatted_phone).first():
-                errors.append("Phone number already registered")
+                errors.append("Phone number is already registered")
         
         # Email validation (optional)
         normalized_email = None
@@ -154,7 +145,7 @@ class AuthService:
                 normalized_email = email_validation['normalized']
                 # Check if email already exists
                 if User.query.filter_by(email=normalized_email).first():
-                    errors.append("Email already registered")
+                    errors.append("Email is already registered")
         
         # Password validation
         password_validation = AuthService.validate_password_strength(password)
@@ -166,6 +157,25 @@ class AuthService:
             errors.append("Work location is required")
         if not home_location:
             errors.append("Home location is required")
+            
+        # Aadhaar validation (Exactly 12 numeric digits required)
+        if aadhaar_raw:
+            if not re.match(r'^\d{12}$', aadhaar_raw):
+                errors.append("Aadhaar number must be exactly 12 numeric digits")
+            elif User.query.filter_by(aadhaar_number=aadhaar_raw).first():
+                errors.append("This Aadhaar number is already registered with another account")
+        else:
+            errors.append("Aadhaar number (12 digits) is required for commuter safety")
+            
+        # Date of Birth validation
+        parsed_dob = None
+        if dob_raw:
+            try:
+                parsed_dob = datetime.strptime(str(dob_raw).strip(), '%Y-%m-%d').date()
+                if parsed_dob >= datetime.utcnow().date():
+                    errors.append("Date of birth must be in the past")
+            except ValueError:
+                errors.append("Invalid date of birth format. Use YYYY-MM-DD")
         
         # If there are errors, return them
         if errors:
@@ -177,7 +187,7 @@ class AuthService:
         # Create new user
         try:
             hashed_password = AuthService.hash_password(password)
-            gender = user_data.get('gender', 'prefer_not_to_say').strip().lower()
+            gender = str(user_data.get('gender', 'prefer_not_to_say')).strip().lower()
             if gender not in ['female', 'male', 'other', 'prefer_not_to_say']:
                 gender = 'prefer_not_to_say'
             
@@ -187,6 +197,9 @@ class AuthService:
                 email=normalized_email,
                 password_hash=hashed_password,
                 gender=gender,
+                aadhaar_number=aadhaar_raw,
+                date_of_birth=parsed_dob,
+                avatar=avatar or 'avatar-1',
                 work_location=work_location,
                 home_location=home_location
             )
@@ -498,44 +511,100 @@ class AuthService:
     
     @staticmethod
     def update_profile(user_id: int, profile_data: dict) -> dict:
-        """Update user profile information"""
+        """Update user profile information (avatar, phone, email, home/work locations, gender)"""
         from models.models import db, User
         
         user = User.query.get(user_id)
         if not user:
             return {'success': False, 'error': 'User not found'}
         
-        # Extract profile data
-        name = profile_data.get('name', '').strip()
-        work_location = profile_data.get('work_location', '').strip()
-        home_location = profile_data.get('home_location', '').strip()
-        
-        # Validation
         errors = []
         
-        if name and len(name) < 2:
-            errors.append("Name must be at least 2 characters long")
+        # Name
+        name = profile_data.get('name')
+        if name is not None:
+            name = name.strip()
+            if len(name) < 2:
+                errors.append("Name must be at least 2 characters long")
+            else:
+                user.name = name
+        
+        # Phone update
+        new_phone = profile_data.get('phone')
+        if new_phone is not None and new_phone.strip():
+            new_phone = new_phone.strip()
+            phone_val = AuthService.validate_phone_number(new_phone)
+            if not phone_val['valid']:
+                errors.append(f"Phone: {phone_val['error']}")
+            else:
+                formatted = phone_val['formatted_number']
+                existing = User.query.filter(User.phone == formatted, User.id != user_id).first()
+                if existing:
+                    errors.append("This phone number is already registered with another account")
+                else:
+                    user.phone = formatted
+        
+        # Email update
+        new_email = profile_data.get('email')
+        if new_email is not None and new_email.strip():
+            new_email = new_email.strip()
+            email_val = AuthService.validate_email_address(new_email)
+            if not email_val['valid']:
+                errors.append(f"Email: {email_val['error']}")
+            else:
+                normalized = email_val['normalized']
+                existing = User.query.filter(User.email == normalized, User.id != user_id).first()
+                if existing:
+                    errors.append("This email is already registered with another account")
+                else:
+                    user.email = normalized
+        
+        # Avatar
+        avatar = profile_data.get('avatar')
+        if avatar is not None:
+            user.avatar = avatar.strip()
+        
+        # Gender
+        gender = profile_data.get('gender')
+        if gender is not None:
+            gender_clean = gender.strip().lower()
+            if gender_clean in ['female', 'male', 'other', 'prefer_not_to_say']:
+                user.gender = gender_clean
+        
+        # Address / Locations
+        work_location = profile_data.get('work_location')
+        if work_location is not None and work_location.strip():
+            user.work_location = work_location.strip()
+            
+        home_location = profile_data.get('home_location')
+        if home_location is not None and home_location.strip():
+            user.home_location = home_location.strip()
+            
+        # Preferred time
+        pref_time = profile_data.get('preferred_departure_time')
+        if pref_time:
+            try:
+                user.preferred_departure_time = datetime.strptime(pref_time, '%H:%M').time()
+            except Exception:
+                pass
+                
+        # Travel days
+        travel_days = profile_data.get('travel_days')
+        if travel_days and isinstance(travel_days, list):
+            user.set_travel_days(travel_days)
+            
+        # Note: aadhaar_number and date_of_birth are STRICTLY IMMUTABLE and cannot be modified!
         
         if errors:
             return {'success': False, 'errors': errors}
         
         try:
-            # Update allowed fields
-            if name:
-                user.name = name
-            if work_location:
-                user.work_location = work_location
-            if home_location:
-                user.home_location = home_location
-            
             db.session.commit()
-            
             return {
                 'success': True,
                 'message': 'Profile updated successfully',
                 'user': user.to_dict()
             }
-            
         except Exception as e:
             db.session.rollback()
             return {

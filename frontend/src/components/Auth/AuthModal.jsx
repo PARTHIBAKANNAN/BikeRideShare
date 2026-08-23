@@ -297,10 +297,10 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }) {
                   <input
                     type="text"
                     required
-                    placeholder="e.g. Nivetha S"
+                    placeholder="Enter your full name"
                     value={regForm.name}
                     onChange={(e) => setRegForm({ ...regForm, name: e.target.value })}
-                    className="w-full bg-slate-900/80 border border-slate-700 text-white text-xs rounded-xl p-2.5 focus:border-emerald-500 focus:outline-none"
+                    className="w-full bg-slate-900/80 border border-slate-700 text-white text-xs rounded-xl p-2.5 focus:border-emerald-500 focus:outline-none placeholder:text-slate-500"
                   />
                 </div>
 
@@ -309,10 +309,10 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }) {
                   <input
                     type="tel"
                     required
-                    placeholder="e.g. 9840112233"
+                    placeholder="10-digit mobile number"
                     value={regForm.phone}
                     onChange={(e) => setRegForm({ ...regForm, phone: e.target.value })}
-                    className="w-full bg-slate-900/80 border border-slate-700 text-white text-xs rounded-xl p-2.5 focus:border-emerald-500 focus:outline-none font-mono"
+                    className="w-full bg-slate-900/80 border border-slate-700 text-white text-xs rounded-xl p-2.5 focus:border-emerald-500 focus:outline-none font-mono placeholder:text-slate-500"
                   />
                 </div>
               </div>
@@ -324,10 +324,10 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }) {
                   <input
                     type="email"
                     required
-                    placeholder="e.g. niveda@gmail.com"
+                    placeholder="Enter your email address"
                     value={regForm.email}
                     onChange={(e) => setRegForm({ ...regForm, email: e.target.value })}
-                    className="w-full bg-slate-900/80 border border-slate-700 text-white text-xs rounded-xl p-2.5 focus:border-emerald-500 focus:outline-none"
+                    className="w-full bg-slate-900/80 border border-slate-700 text-white text-xs rounded-xl p-2.5 focus:border-emerald-500 focus:outline-none placeholder:text-slate-500"
                   />
                 </div>
 
@@ -336,10 +336,10 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }) {
                   <input
                     type="password"
                     required
-                    placeholder="Min 6 characters"
+                    placeholder="Create a password (min 6 chars)"
                     value={regForm.password}
                     onChange={(e) => setRegForm({ ...regForm, password: e.target.value })}
-                    className="w-full bg-slate-900/80 border border-slate-700 text-white text-xs rounded-xl p-2.5 focus:border-emerald-500 focus:outline-none"
+                    className="w-full bg-slate-900/80 border border-slate-700 text-white text-xs rounded-xl p-2.5 focus:border-emerald-500 focus:outline-none placeholder:text-slate-500"
                   />
                 </div>
               </div>
@@ -356,13 +356,13 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }) {
                   type="text"
                   required
                   maxLength={12}
-                  placeholder="Enter 12-digit Aadhaar (e.g. 548912345678)"
+                  placeholder="Enter 12-digit Aadhaar number"
                   value={regForm.aadhaar_number}
                   onChange={(e) => {
                     const numericOnly = e.target.value.replace(/\D/g, '').slice(0, 12);
                     setRegForm({ ...regForm, aadhaar_number: numericOnly });
                   }}
-                  className="w-full bg-slate-900/80 border border-slate-700 text-white text-xs rounded-xl p-2.5 focus:border-emerald-500 focus:outline-none font-mono tracking-wider"
+                  className="w-full bg-slate-900/80 border border-slate-700 text-white text-xs rounded-xl p-2.5 focus:border-emerald-500 focus:outline-none font-mono tracking-wider placeholder:text-slate-500"
                 />
                 <p className="text-[10px] text-slate-500 mt-1">
                   Required for identity verification and safety across Chennai commute corridors. Cannot be modified later.
@@ -397,10 +397,10 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }) {
                   <input
                     type="text"
                     required
-                    placeholder="e.g. Koyembedu / Tambaram"
+                    placeholder="Home area (e.g. Anna Nagar, Porur)"
                     value={regForm.home_location}
                     onChange={(e) => setRegForm({ ...regForm, home_location: e.target.value })}
-                    className="w-full bg-slate-900/80 border border-slate-700 text-white text-xs rounded-xl p-2.5 focus:border-emerald-500 focus:outline-none"
+                    className="w-full bg-slate-900/80 border border-slate-700 text-white text-xs rounded-xl p-2.5 focus:border-emerald-500 focus:outline-none placeholder:text-slate-500"
                   />
                 </div>
                 <div>
@@ -408,10 +408,10 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }) {
                   <input
                     type="text"
                     required
-                    placeholder="e.g. Tidel Park, Taramani"
+                    placeholder="Tech park / Office (e.g. Tidel Park, DLF)"
                     value={regForm.work_location}
                     onChange={(e) => setRegForm({ ...regForm, work_location: e.target.value })}
-                    className="w-full bg-slate-900/80 border border-slate-700 text-white text-xs rounded-xl p-2.5 focus:border-emerald-500 focus:outline-none"
+                    className="w-full bg-slate-900/80 border border-slate-700 text-white text-xs rounded-xl p-2.5 focus:border-emerald-500 focus:outline-none placeholder:text-slate-500"
                   />
                 </div>
               </div>

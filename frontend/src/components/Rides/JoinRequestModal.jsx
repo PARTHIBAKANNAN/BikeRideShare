@@ -155,10 +155,10 @@ export default function JoinRequestModal({
                     <input
                       type="text"
                       required={isForFriend}
-                      placeholder="e.g. Priya"
+                      placeholder="Friend's full name"
                       value={friendName}
                       onChange={(e) => setFriendName(e.target.value)}
-                      className="w-full bg-slate-950 border border-slate-700 text-white text-xs rounded-xl px-3 py-2 focus:border-emerald-500 focus:outline-none"
+                      className="w-full bg-slate-950 border border-slate-700 text-white text-xs rounded-xl px-3 py-2 focus:border-emerald-500 focus:outline-none placeholder:text-slate-500"
                     />
                   </div>
                   <div>
@@ -166,10 +166,10 @@ export default function JoinRequestModal({
                     <input
                       type="tel"
                       required={isForFriend}
-                      placeholder="9840112233"
+                      placeholder="10-digit mobile number"
                       value={friendPhone}
                       onChange={(e) => setFriendPhone(e.target.value)}
-                      className="w-full bg-slate-950 border border-slate-700 text-white text-xs rounded-xl px-3 py-2 focus:border-emerald-500 focus:outline-none"
+                      className="w-full bg-slate-950 border border-slate-700 text-white text-xs rounded-xl px-3 py-2 focus:border-emerald-500 focus:outline-none font-mono placeholder:text-slate-500"
                     />
                   </div>
                 </div>
